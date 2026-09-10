@@ -24,10 +24,28 @@ from tsfm_peft.evaluate import EvaluationResult
 from tsfm_peft.models.base import ForecastModel
 from tsfm_peft.paths import results_root
 from tsfm_peft.runtime import ResourceLog, collect_environment
+from tsfm_peft.training import TrainingRecord
 
 #: Bumped whenever the artifact layout changes incompatibly. The table generator refuses
 #: artifacts it does not understand rather than silently misreading an old field.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+
+def adapter_path(name: str, root: str | Path | None = None) -> Path:
+    """Return the directory an experiment's fine-tuned adapter is written to.
+
+    Kept beside the artifacts rather than inside them: the adapter is binary and a few
+    megabytes, and the artifact is meant to stay readable and diffable.
+
+    Args:
+        name: The experiment name.
+        root: Results directory. Defaults to :func:`~tsfm_peft.paths.results_root`.
+
+    Returns:
+        The directory path, not created here.
+    """
+    directory = Path(root) if root is not None else results_root()
+    return directory / "adapters" / name
 
 
 def artifact_path(name: str, root: str | Path | None = None) -> Path:
@@ -54,6 +72,7 @@ def build_artifact(
     seed_record: dict[str, Any],
     resources: ResourceLog,
     environment: dict[str, Any] | None = None,
+    training: TrainingRecord | None = None,
 ) -> dict[str, Any]:
     """Assemble the artifact for one run.
 
@@ -66,6 +85,7 @@ def build_artifact(
         seed_record: The return value of :func:`~tsfm_peft.runtime.set_seed`.
         resources: Timings and peak memory for each phase.
         environment: Provenance block; collected if not supplied.
+        training: What the fine-tuning loop did, or ``None`` for a zero-shot arm.
 
     Returns:
         A JSON-serialisable mapping.
@@ -78,6 +98,7 @@ def build_artifact(
         "seed": seed_record,
         "data": split.describe(),
         "model": model.describe(),
+        "training": training.to_dict() if training is not None else None,
         "results": result.to_dict(),
         "resources": resources.to_dict(),
         "environment": environment if environment is not None else collect_environment(),

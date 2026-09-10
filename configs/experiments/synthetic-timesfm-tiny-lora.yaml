@@ -1,0 +1,33 @@
+# LoRA fine-tuning on the generated smoke fixture, with a randomly initialised tiny model.
+#
+# NOT A BENCHMARK, twice over: the data is synthetic and the model is noise. Its forecasts
+# mean nothing and no number from this run belongs in a results table. What it proves is
+# that the pipeline runs -- real module names, real forward pass, real peft wiring, real
+# optimiser -- end to end on a CPU in a couple of seconds, which is what CI checks:
+#
+#   uv run tsfm-peft run configs/experiments/synthetic-timesfm-tiny-lora.yaml
+#
+# context_length 96 is a multiple of the fixture's 8-step patch length, as it must be.
+name: synthetic-timesfm-tiny-lora
+data: ../data/synthetic.yaml
+model:
+  name: timesfm_2p5_tiny
+  options:
+    device: cpu
+    dtype: float32
+    batch_size: 8
+    peft:
+      method: lora
+      rank: 4
+      alpha: 8
+training:
+  max_steps: 12
+  batch_size: 8
+  learning_rate: 0.01
+  eval_every: 4
+  log_every: 4
+  save_adapter: false
+seed: 0
+notes: >-
+  Pipeline smoke test on synthetic data with a random-init fixture model. Results are
+  meaningless by construction.

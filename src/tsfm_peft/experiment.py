@@ -16,8 +16,9 @@ from tsfm_peft.config import ExperimentConfig
 from tsfm_peft.data.windows import BacktestSplit
 from tsfm_peft.evaluate import EvaluationResult, evaluate_model
 from tsfm_peft.models.base import ForecastModel
-from tsfm_peft.results import artifact_path, build_artifact, write_artifact
+from tsfm_peft.results import adapter_path, artifact_path, build_artifact, write_artifact
 from tsfm_peft.runtime import ResourceLog, collect_environment, set_seed
+from tsfm_peft.training import TrainingRecord, train_model
 
 
 @dataclass(frozen=True)
@@ -27,8 +28,9 @@ class RunOutcome:
     Attributes:
         config: The config that was run.
         split: The backtest split it was evaluated on.
-        model: The adapter, after evaluation.
+        model: The adapter, after training and evaluation.
         result: The scored evaluation.
+        training: What the fine-tuning loop did, or ``None`` for a zero-shot arm.
         artifact: The metrics artifact mapping.
         path: Where the artifact was written, or ``None`` if writing was suppressed.
     """
@@ -37,6 +39,7 @@ class RunOutcome:
     split: BacktestSplit
     model: ForecastModel
     result: EvaluationResult
+    training: TrainingRecord | None
     artifact: dict[str, Any]
     path: Path | None
 
@@ -68,6 +71,25 @@ def run_experiment(
     with resources.phase("load_model"):
         model = config.model.build()
 
+    training = None
+    if config.training is not None:
+        # LEAKAGE BOUNDARY: train_model reads split.train and the validation windows. The
+        # test windows are scored below, after the selected checkpoint has been restored,
+        # and nothing in this function hands them to the trainer.
+        device = getattr(model, "device", None)
+        with resources.phase("train", device=device):
+            training = train_model(
+                model,
+                split,
+                config.training,
+                seed=config.seed,
+                adapter_dir=(
+                    adapter_path(config.name, results_dir)
+                    if write and config.training.save_adapter
+                    else None
+                ),
+            )
+
     result = evaluate_model(
         model,
         split,
@@ -86,13 +108,20 @@ def run_experiment(
         seed_record=seed_record,
         resources=resources,
         environment=collect_environment(),
+        training=training,
     )
 
     path = None
     if write:
         path = write_artifact(artifact, artifact_path(config.name, results_dir))
     return RunOutcome(
-        config=config, split=split, model=model, result=result, artifact=artifact, path=path
+        config=config,
+        split=split,
+        model=model,
+        result=result,
+        training=training,
+        artifact=artifact,
+        path=path,
     )
 
 
@@ -123,6 +152,24 @@ def summarise(outcome: RunOutcome) -> str:
         f"peak GPU        {peak_gpu / 1e9:.2f} GB" if peak_gpu else "peak GPU        n/a (CPU)",
         f"seed            {outcome.config.seed}",
     ]
+    if outcome.training is not None:
+        record = outcome.training
+        selected = (
+            f"step {record.best_step} of {record.steps} on val {record.selection_metric} "
+            f"{record.best_metric:.4f}"
+            if record.selection == "best_val"
+            else f"last of {record.steps} steps, no validation"
+        )
+        lines[7:7] = [
+            f"training        {record.steps} steps over {record.n_train_windows} windows "
+            f"({record.epochs:.1f} epochs)",
+            f"final loss      {record.final_loss:.4f}"
+            if record.final_loss is not None
+            else "final loss      n/a",
+            f"selected        {selected}" + ("  [early stopped]" if record.early_stopped else ""),
+        ]
     if outcome.path is not None:
         lines.append(f"artifact        {outcome.path}")
+    if outcome.training is not None and outcome.training.adapter_path:
+        lines.append(f"adapter         {outcome.training.adapter_path}")
     return "\n".join(lines)

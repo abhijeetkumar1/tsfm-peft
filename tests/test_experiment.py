@@ -158,6 +158,7 @@ class TestRunExperiment:
             "seed",
             "data",
             "model",
+            "training",
             "results",
             "resources",
             "environment",

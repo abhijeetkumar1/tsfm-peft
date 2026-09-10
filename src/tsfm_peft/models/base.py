@@ -273,3 +273,69 @@ class ForecastModel(ABC):
         if forecast.n_rows > size:  # pragma: no cover - defensive
             raise AssertionError(f"{self.name}: batch of {size} produced {forecast.n_rows} rows")
         return forecast
+
+
+class FineTunableModel(ForecastModel):
+    """A :class:`ForecastModel` whose weights :mod:`tsfm_peft.training` can update.
+
+    The trainer is deliberately model-agnostic: it owns batching, the optimiser, the
+    schedule and checkpoint selection, and asks the adapter for one thing -- a differentiable
+    loss for a batch of windows. The loss belongs to the adapter because it depends on what
+    space the model normalises in and which output head means what, and getting that wrong is
+    silent. Adding Moirai later means implementing :meth:`training_loss` for Moirai, not
+    teaching the trainer about a second model.
+    """
+
+    @property
+    @abstractmethod
+    def module(self) -> Any:
+        """The underlying ``torch.nn.Module`` whose parameters are optimised."""
+
+    @abstractmethod
+    def training_loss(self, contexts: Any, targets: Any) -> Any:
+        """Return a differentiable scalar loss for one batch of training windows.
+
+        Args:
+            contexts: ``(n_rows, context_length)`` raw observations, oldest first.
+            targets: ``(n_rows, horizon)`` raw observations immediately following each
+                context. These come from the fit region only; see
+                :func:`~tsfm_peft.data.windows.make_training_windows`.
+
+        Returns:
+            A scalar ``torch.Tensor`` with ``requires_grad`` set.
+        """
+
+    def trainable_parameters(self) -> list[Any]:
+        """Return the parameters the optimiser should update."""
+        return [p for p in self.module.parameters() if p.requires_grad]
+
+    @property
+    def supports_checkpointing(self) -> bool:
+        """Whether the trainer can snapshot and restore this model's trained weights.
+
+        Checkpoint selection is not optional dressing: without it a run reports whatever the
+        last step left behind. An adapter that cannot be snapshotted cheaply says so here
+        rather than failing at the first validation pass, an hour into a run.
+        """
+        return False
+
+    def checkpoint_state(self) -> dict[str, Any]:
+        """Return a detached CPU copy of the trained weights."""
+        raise NotImplementedError(f"{self.name} cannot snapshot its trained weights")
+
+    def restore_checkpoint(self, state: dict[str, Any]) -> None:
+        """Load weights previously returned by :meth:`checkpoint_state`."""
+        raise NotImplementedError(f"{self.name} cannot restore trained weights")
+
+    def save_checkpoint(self, path: Any) -> Any:
+        """Write the trained weights to ``path`` and return where they went."""
+        raise NotImplementedError(f"{self.name} cannot save trained weights")
+
+    def set_train_mode(self, training: bool) -> None:
+        """Switch the underlying module between train and eval mode.
+
+        Dropout and any other train-only behaviour is why evaluation must not run in train
+        mode: a validation score taken with dropout active is not the score the same weights
+        would produce at inference.
+        """
+        self.module.train(training)

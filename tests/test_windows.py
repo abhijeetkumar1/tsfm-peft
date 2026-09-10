@@ -1,6 +1,7 @@
 """Rolling-origin split arithmetic, window boundaries and leakage containment."""
 
 import json
+from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -11,8 +12,10 @@ from tsfm_peft.data.windows import (
     BacktestProtocol,
     cut_window,
     make_split,
+    make_training_windows,
     plan_split,
     stack_windows,
+    training_origins,
 )
 from tsfm_peft.metrics import seasonal_naive_scale
 
@@ -250,3 +253,74 @@ class TestNoLeakage:
             stitched = np.concatenate([w.target for w in windows])
             first_origin = split.plans[series.series_id].test_origins[0]
             assert np.array_equal(stitched, series.values[first_origin:])
+
+
+class TestTrainingWindows:
+    def test_origins_end_at_the_fit_boundary(self):
+        origins = training_origins(100, horizon=10, context_length=20, stride=10)
+        assert origins[-1] == 90
+        assert origins[0] >= 20
+        assert list(origins) == [20, 30, 40, 50, 60, 70, 80, 90]
+
+    def test_a_ragged_stride_keeps_the_window_nearest_the_boundary(self):
+        # 100 - 10 = 90 is the last origin; stepping back by 7 leaves 20 unreachable, and it
+        # is the oldest window that gets dropped, not the most recent one.
+        origins = training_origins(100, horizon=10, context_length=20, stride=7)
+        assert origins[-1] == 90
+        assert min(origins) >= 20
+
+    def test_no_origins_when_the_fit_region_is_too_short(self):
+        assert training_origins(25, horizon=10, context_length=20, stride=10) == ()
+
+    def test_windows_never_reach_past_fit_end(self, dataset):
+        split = make_split(dataset, protocol())
+        windows = make_training_windows(split)
+        assert windows
+        for window in windows:
+            fit_end = split.plans[window.series_id].fit_end
+            # The target is the furthest thing a training window touches.
+            assert window.origin + len(window.target) <= fit_end
+
+    def test_windows_match_the_fit_region_values(self, dataset):
+        split = make_split(dataset, protocol())
+        for window in make_training_windows(split):
+            values = dataset[window.series_id].values
+            start = window.origin - len(window.context)
+            assert np.array_equal(window.context, values[start : window.origin])
+            assert np.array_equal(
+                window.target, values[window.origin : window.origin + len(window.target)]
+            )
+
+    def test_default_stride_gives_non_overlapping_targets(self, dataset):
+        split = make_split(dataset, protocol(horizon=10))
+        windows = [w for w in make_training_windows(split) if w.series_id == "s0"]
+        origins = [w.origin for w in windows]
+        assert all(b - a >= 10 for a, b in pairwise(origins))
+
+    def test_a_smaller_stride_yields_more_windows(self, dataset):
+        split = make_split(dataset, protocol(horizon=10))
+        assert len(make_training_windows(split, stride=5)) > len(make_training_windows(split))
+
+    def test_max_per_series_keeps_the_most_recent_windows(self, dataset):
+        split = make_split(dataset, protocol())
+        capped = make_training_windows(split, max_per_series=2)
+        full = make_training_windows(split)
+        assert len(capped) == 2 * len(split.train)
+        for series_id in split.train:
+            kept = [w.origin for w in capped if w.series_id == series_id]
+            everything = [w.origin for w in full if w.series_id == series_id]
+            assert kept == everything[-2:]
+
+    def test_rejects_a_fit_region_too_short_to_train_on(self, make_dataset):
+        # 158 observations with 2 test windows leaves a fit region of 110: long enough for
+        # the protocol's own minimum (a context ends exactly at fit_end) but too short to
+        # train on, since a training window needs its target inside the fit region too.
+        data = make_dataset(n_series=1, length=158)
+        split = make_split(data, protocol(horizon=24, context_length=96, n_test_windows=2))
+        with pytest.raises(ValueError, match="cannot hold a training window"):
+            make_training_windows(split)
+
+    def test_rejects_a_non_positive_stride(self, dataset):
+        split = make_split(dataset, protocol())
+        with pytest.raises(ValueError, match="stride must be"):
+            make_training_windows(split, stride=0)
