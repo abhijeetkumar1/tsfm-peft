@@ -1,0 +1,18 @@
+# NN5 Daily: 111 ATM withdrawal series, 791 steps each.
+#
+# Horizon 56 is the NN5 competition horizon, which the Monash file also declares. With 791
+# observations there is only room for a few non-overlapping windows: 3 test plus 1
+# validation window consume 224 steps, leaving 567 for fitting.
+#
+# Context is 256 rather than 512 so that the fit region can supply a reasonable number of
+# distinct training windows; 512 would leave barely one context's worth of slack.
+#
+# mean_abs scaling, not standard: these are non-negative count-like demand series, and
+# mean-centring would put "no withdrawals" at a negative value.
+dataset: nn5_daily
+protocol:
+  horizon: 56
+  context_length: 256
+  n_test_windows: 3
+  n_val_windows: 1
+scaler: mean_abs

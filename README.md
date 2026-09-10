@@ -21,6 +21,21 @@ Explicit non-goals: no web UI, no multi-GPU, no new architectures, no Moirai/Chr
 implementations (the adapter interface is designed for them), no experiment-tracking service
 as a hard dependency.
 
+## Datasets
+
+Downloaded on first use into `~/.cache/tsfm_peft` (override with `TSFM_PEFT_CACHE`) and
+pinned by SHA-256, so an upstream edit fails loudly instead of silently changing results.
+No data is committed to this repository.
+
+| Dataset | Content | License | Source |
+|---|---|---|---|
+| `etth1` | Electricity Transformer Temperature, hourly, 7 channels x 17420 steps, each channel treated as an independent univariate series | CC BY-ND 4.0 | [zhouhaoyi/ETDataset](https://github.com/zhouhaoyi/ETDataset) |
+| `nn5_daily` | Daily ATM cash withdrawals, 111 series x 791 steps, Monash "without missing values" variant | CC BY 4.0 | [Zenodo 4656117](https://zenodo.org/records/4656117) |
+
+ETTh1 is CC BY-ND: it is downloaded at runtime and never redistributed or shipped in
+modified form. NN5's missing values were imputed upstream by the Monash authors (median of
+the same weekday); those imputed points are still scored here.
+
 ## Development
 
 ```bash

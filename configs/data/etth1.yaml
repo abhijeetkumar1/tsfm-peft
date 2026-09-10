@@ -1,0 +1,16 @@
+# ETTh1: 7 hourly channels, 17420 steps each.
+#
+# Horizon 96 is the standard long-horizon setting for this dataset. Windows are
+# non-overlapping (stride defaults to the horizon), so each of the 8 test windows scores a
+# distinct 96-hour span: 768 evaluated hours per channel, 5376 in total.
+#
+# Note this is NOT the protocol used by the usual LTSF benchmark tables, which slide a
+# stride-1 window over a 20% test split. Numbers here are internally comparable across arms
+# but are not directly comparable to published LTSF leaderboards.
+dataset: etth1
+protocol:
+  horizon: 96
+  context_length: 512
+  n_test_windows: 8
+  n_val_windows: 2
+scaler: standard

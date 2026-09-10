@@ -30,7 +30,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system ".[models,dev]"
 
 COPY configs ./configs
-COPY scripts ./scripts
 COPY tests ./tests
 
 # Datasets and model weights are downloaded at runtime into /cache, which is
