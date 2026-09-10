@@ -1,0 +1,22 @@
+# TimesFM 2.5 zero-shot on NN5 Daily.
+#
+# The reference row: every fine-tuned arm has to beat this to have earned its parameters.
+# No weights are updated, so seed and determinism only affect kernel selection here.
+#
+# revision is deliberately null until a run pins one. `main` is a moving target, so a
+# published number should name the commit sha it was produced against -- see the README.
+name: nn5_daily-timesfm-zeroshot
+data: ../data/nn5_daily.yaml
+model:
+  name: timesfm_2p5
+  options:
+    checkpoint: google/timesfm-2.5-200m-transformers
+    revision: null
+    device: auto
+    dtype: float32
+    batch_size: 32
+    clamp_negative: per_series
+seed: 0
+notes: >-
+  Zero-shot baseline. Horizon 56 is within the checkpoint's 128-step single-decode horizon,
+  so no autoregressive rollout is involved.

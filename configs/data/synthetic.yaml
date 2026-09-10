@@ -1,0 +1,14 @@
+# The generated smoke fixture: 3 series x 600 hourly steps.
+#
+# Sized so the whole end-to-end run finishes in well under a second on CPU: horizon 24 with
+# 2 test and 1 validation window reserves 72 steps, leaving 528 for fitting.
+#
+# identity scaling because nothing in this path needs an external scaler, and asking for one
+# a model does not want is an error rather than a silent double-normalisation.
+dataset: synthetic
+protocol:
+  horizon: 24
+  context_length: 96
+  n_test_windows: 2
+  n_val_windows: 1
+scaler: identity

@@ -1,0 +1,12 @@
+# Seasonal-naive baseline on nn5_daily.
+#
+# The floor. MASE divides by the *in-sample* seasonal-naive error, so a foundation model can
+# score below 1.0 and still lose to an out-of-sample seasonal naive on the same windows.
+# Publishing this row is what makes the comparison honest.
+name: nn5_daily-seasonal-naive
+data: ../data/nn5_daily.yaml
+model:
+  name: seasonal_naive
+seed: 0
+notes: >-
+  Out-of-sample seasonal-naive floor, scored on exactly the same windows as every other arm.

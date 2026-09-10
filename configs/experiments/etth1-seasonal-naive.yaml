@@ -1,0 +1,12 @@
+# Seasonal-naive baseline on etth1.
+#
+# The floor. MASE divides by the *in-sample* seasonal-naive error, so a foundation model can
+# score below 1.0 and still lose to an out-of-sample seasonal naive on the same windows.
+# Publishing this row is what makes the comparison honest.
+name: etth1-seasonal-naive
+data: ../data/etth1.yaml
+model:
+  name: seasonal_naive
+seed: 0
+notes: >-
+  Out-of-sample seasonal-naive floor, scored on exactly the same windows as every other arm.

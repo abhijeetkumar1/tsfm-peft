@@ -1,0 +1,12 @@
+# CPU smoke experiment: generated data, no weights, no network.
+#
+# This is the config CI runs to prove the pipeline works end to end. The dataset is a
+# generated fixture, so the numbers it produces are meaningless as a benchmark and must
+# never appear in the README results table.
+name: synthetic-seasonal-naive
+data: ../data/synthetic.yaml
+model:
+  name: seasonal_naive
+seed: 0
+notes: >-
+  Pipeline smoke test. Synthetic data; results are not a benchmark.
