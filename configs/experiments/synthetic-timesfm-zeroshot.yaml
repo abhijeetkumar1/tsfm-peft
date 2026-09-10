@@ -1,0 +1,20 @@
+# TimesFM 2.5 zero-shot on the generated smoke fixture.
+#
+# Not a benchmark: the data is synthetic and the numbers mean nothing. This exists as the
+# fastest way to confirm a machine can actually load the checkpoint and run the pipeline
+# before committing to a full ETTh1 run:
+#
+#   uv run tsfm-peft run configs/experiments/synthetic-timesfm-zeroshot.yaml
+#
+# context_length 96 is a multiple of the checkpoint's 32-step patch length, as it must be.
+name: synthetic-timesfm-zeroshot
+data: ../data/synthetic.yaml
+model:
+  name: timesfm_2p5
+  options:
+    device: auto
+    dtype: float32
+    batch_size: 8
+seed: 0
+notes: >-
+  Install check on synthetic data. Results are not a benchmark.
