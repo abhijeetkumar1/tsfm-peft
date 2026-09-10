@@ -255,8 +255,6 @@ def train_model(
         ValueError: If the model has no trainable parameters, or validation was requested
             but the protocol produced no validation windows.
     """
-    import torch
-
     if not isinstance(model, FineTunableModel):
         raise TypeError(
             f"{model.name} does not support fine-tuning; remove the training block or use "
@@ -278,6 +276,10 @@ def train_model(
             "set n_val_windows > 0 in the data config, or eval_every: 0 to train for a "
             "fixed number of steps and keep the last one"
         )
+
+    # Imported after the checks above so a misconfigured run says what is wrong with the
+    # config rather than reporting a missing dependency it never got far enough to need.
+    import torch
 
     windows = make_training_windows(
         split, stride=config.train_stride, max_per_series=config.max_windows_per_series

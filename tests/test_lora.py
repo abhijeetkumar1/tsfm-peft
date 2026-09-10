@@ -130,9 +130,7 @@ class TestAdapterState:
         assert state
         model.restore_checkpoint(state)
 
-    def test_a_restored_checkpoint_reproduces_its_forecast(self):
-        import torch
-
+    def test_a_restored_checkpoint_reproduces_its_forecast(self, torch):
         model = tiny_with_peft()
         saved = model.checkpoint_state()
         batch = contexts()
@@ -160,9 +158,7 @@ class TestAdapterState:
         with pytest.raises(ValueError, match="nothing to restore"):
             tiny_with_peft().restore_checkpoint({})
 
-    def test_rejects_a_state_from_another_configuration(self):
-        import torch
-
+    def test_rejects_a_state_from_another_configuration(self, torch):
         model = tiny_with_peft()
         state = model.checkpoint_state()
         state["base_model.model.model.layers.0.self_attn.not_a_projection.lora_A.weight"] = (

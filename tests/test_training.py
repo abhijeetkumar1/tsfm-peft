@@ -257,6 +257,8 @@ class TestTrainModel:
         assert not model.module.training
 
     def test_is_deterministic_under_the_same_seed(self, split):
+        pytest.importorskip("peft")
+
         def run():
             set_seed(0)
             model = build_model("timesfm_2p5_tiny", TINY_PEFT)
@@ -265,6 +267,8 @@ class TestTrainModel:
         assert run() == run()
 
     def test_the_batch_seed_changes_the_result(self, split):
+        pytest.importorskip("peft")
+
         def run(seed_offset):
             set_seed(0)
             model = build_model("timesfm_2p5_tiny", TINY_PEFT)
