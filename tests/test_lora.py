@@ -123,6 +123,47 @@ class TestApplyPeft:
         assert described["trainable_parameters"] < described["total_parameters"]
 
 
+class TestAdapterState:
+    def test_round_trips_the_trained_weights(self):
+        model = tiny_with_peft()
+        state = model.checkpoint_state()
+        assert state
+        model.restore_checkpoint(state)
+
+    def test_a_restored_checkpoint_reproduces_its_forecast(self):
+        import torch
+
+        model = tiny_with_peft()
+        saved = model.checkpoint_state()
+        batch = contexts()
+        before = model.predict(batch, 24).point
+
+        # Move the adapters somewhere else, then restore.
+        with torch.no_grad():
+            for name, parameter in model.module.named_parameters():
+                if "lora_B" in name:
+                    parameter.add_(0.5)
+        assert not np.allclose(model.predict(batch, 24).point, before)
+
+        model.restore_checkpoint(saved)
+        assert np.allclose(model.predict(batch, 24).point, before)
+
+    def test_rejects_an_empty_state(self):
+        with pytest.raises(ValueError, match="nothing to restore"):
+            tiny_with_peft().restore_checkpoint({})
+
+    def test_rejects_a_state_from_another_configuration(self):
+        import torch
+
+        model = tiny_with_peft()
+        state = model.checkpoint_state()
+        state["base_model.model.model.layers.0.self_attn.not_a_projection.lora_A.weight"] = (
+            torch.zeros(4, 32)
+        )
+        with pytest.raises(ValueError, match="no parameter for"):
+            model.restore_checkpoint(state)
+
+
 class TestAlignedLoss:
     def loss(self, torch, predictions, target, levels, **kwargs: float):
         from tsfm_peft.models.timesfm import aligned_forecast_loss

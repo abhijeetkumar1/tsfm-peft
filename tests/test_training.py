@@ -7,6 +7,7 @@ tests need the ``models`` extra and drive the tiny fixture model on CPU.
 import numpy as np
 import pytest
 
+from tsfm_peft import training
 from tsfm_peft.config import ExperimentConfig
 from tsfm_peft.data.dataset import TimeSeriesDataset
 from tsfm_peft.data.registry import load_dataset
@@ -189,6 +190,38 @@ class TestTrainModel:
         assert record.best_step in [point["step"] for point in record.val_curve]
         rescored = evaluate_model(model, split, window_set="val").metrics.mase
         assert rescored == pytest.approx(record.best_metric, rel=1e-9)
+
+    def test_stops_early_when_validation_stops_improving(self, model, split, monkeypatch):
+        # The scores are supplied rather than trained for, so this tests the patience logic
+        # itself and not the optimiser's luck on a random-weight fixture.
+        scores = iter([1.0, 2.0, 3.0, 0.5])
+        monkeypatch.setattr(
+            training,
+            "_validation_metrics",
+            lambda model, split: {"mase": next(scores), "smape": 0.0, "wql": 0.0},
+        )
+        config = training_config(max_steps=12, eval_every=3, log_every=3, patience=2)
+        record = train_model(model, split, config, seed=0)
+
+        assert record.early_stopped
+        assert record.steps == 9  # improved at 3, then two passes without improvement
+        assert record.best_step == 3
+        assert record.best_metric == 1.0
+        assert len(record.val_curve) == 3
+
+    def test_patience_is_not_reached_while_validation_improves(self, model, split, monkeypatch):
+        scores = iter([3.0, 2.0, 1.0, 0.5])
+        monkeypatch.setattr(
+            training,
+            "_validation_metrics",
+            lambda model, split: {"mase": next(scores), "smape": 0.0, "wql": 0.0},
+        )
+        config = training_config(max_steps=12, eval_every=3, log_every=3, patience=2)
+        record = train_model(model, split, config, seed=0)
+
+        assert not record.early_stopped
+        assert record.steps == 12
+        assert record.best_step == 12
 
     def test_keeps_the_last_step_when_validation_is_disabled(self, model, split):
         record = train_model(model, split, training_config(eval_every=0), seed=0)
