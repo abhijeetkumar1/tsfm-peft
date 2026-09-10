@@ -1,0 +1,51 @@
+# Rank ablation on ETTh1: rank 4, alpha 8.
+#
+# One of four rows. The rank-16 row is etth1-timesfm-lora.yaml itself, which is why there is
+# no -r16 file: the headline arm and the ablation's midpoint are the same run, and running it
+# twice would put two artifacts behind one number.
+#
+# alpha moves with rank to hold alpha/rank at 2.0. The update is scaled by alpha/rank, so
+# fixing that ratio keeps the effective magnitude of the update constant and leaves capacity
+# as the only thing that varies between rows. Holding alpha at 32 instead -- the more common
+# convention -- would change capacity and update scale together, and a difference between two
+# rows could not be attributed to either.
+#
+# Everything else is identical to etth1-timesfm-lora.yaml, including the seed and the step
+# budget. tests/test_configs.py asserts that.
+name: etth1-timesfm-lora-r4
+data: ../data/etth1.yaml
+model:
+  name: timesfm_2p5
+  options:
+    checkpoint: google/timesfm-2.5-200m-transformers
+    revision: null
+    device: auto
+    dtype: float32
+    batch_size: 32
+    clamp_negative: per_series
+    peft:
+      method: lora
+      rank: 4
+      alpha: 8
+      dropout: 0.0
+      # Attention and MLP projections of all 20 decoder layers. The input embedding and the
+      # output projection heads stay frozen, so the pretrained horizon-to-quantile mapping
+      # is preserved and the trainable count stays honest.
+      target_modules: [q_proj, k_proj, v_proj, o_proj, fc1, fc2]
+training:
+  max_steps: 1000
+  batch_size: 8
+  gradient_accumulation_steps: 1
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  warmup_steps: 50
+  schedule: cosine
+  grad_clip: 1.0
+  eval_every: 100
+  patience: 3
+  selection_metric: mase
+  save_adapter: true
+seed: 0
+notes: >-
+  Rank ablation row, rank 4. Compare against the other -r rows and against
+  etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep.

@@ -174,6 +174,23 @@ class TestTrainModel:
         record = train_model(model, split, training_config(max_steps=12, log_every=6), seed=0)
         assert record.loss_curve[-1]["loss"] < record.loss_curve[0]["loss"]
 
+    def test_trains_with_dora(self, split):
+        # The DoRA arm goes through the same loop; what differs is the parameter set it
+        # optimises, so the check is that the loop actually moves those parameters.
+        pytest.importorskip("peft")
+        set_seed(0)
+        dora = build_model(
+            "timesfm_2p5_tiny",
+            {"device": "cpu", "batch_size": 8, "peft": {"method": "dora", "rank": 4}},
+        )
+        batch = np.stack([w.context for w in split.test_windows])
+        before = dora.predict(batch, 24).point
+
+        record = train_model(dora, split, training_config(max_steps=12, log_every=6), seed=0)
+
+        assert record.loss_curve[-1]["loss"] < record.loss_curve[0]["loss"]
+        assert not np.allclose(dora.predict(batch, 24).point, before)
+
     def test_reports_windows_steps_and_epochs(self, model, split):
         record = train_model(model, split, training_config(max_steps=6, batch_size=8), seed=0)
         assert record.n_train_windows == 54

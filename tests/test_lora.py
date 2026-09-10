@@ -148,6 +148,14 @@ class TestAdapterState:
         model.restore_checkpoint(saved)
         assert np.allclose(model.predict(batch, 24).point, before)
 
+    def test_round_trips_dora_magnitude_vectors(self):
+        # DoRA's state carries a magnitude vector per adapted output channel on top of the
+        # low-rank pair. Restoring only the pair would silently keep the wrong magnitudes.
+        model = tiny_with_peft(method="dora")
+        state = model.checkpoint_state()
+        assert any("magnitude" in key for key in state)
+        model.restore_checkpoint(state)
+
     def test_rejects_an_empty_state(self):
         with pytest.raises(ValueError, match="nothing to restore"):
             tiny_with_peft().restore_checkpoint({})

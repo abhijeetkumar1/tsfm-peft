@@ -190,6 +190,18 @@ class TestPeftOnTheRealCheckpoint:
         extra = dora.parameter_counts()["trainable_parameters"] - 4_915_200
         assert extra == 120 * 1280
 
+        # And it has to train, not just attach: DoRA reparameterises the adapted weight, so
+        # a shape or dtype mismatch would only surface on the backward pass.
+        rng = np.random.default_rng(0)
+        contexts = 10.0 + rng.normal(size=(2, 512)).cumsum(axis=1)
+        loss = dora.training_loss(contexts, contexts[:, -1:] + rng.normal(size=(2, 96)))
+        loss.backward()
+        magnitudes = [
+            p for n, p in dora.module.named_parameters() if "magnitude" in n and p.requires_grad
+        ]
+        assert magnitudes
+        assert all(p.grad is not None for p in magnitudes)
+
     def test_one_training_step_runs(self, lora):
         rng = np.random.default_rng(0)
         contexts = 10.0 + rng.normal(size=(2, 512)).cumsum(axis=1)
