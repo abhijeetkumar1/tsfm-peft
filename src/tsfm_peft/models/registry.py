@@ -21,7 +21,12 @@ from pydantic import BaseModel
 
 from tsfm_peft.models.base import ForecastModel
 from tsfm_peft.models.naive import SeasonalNaiveOptions, build_seasonal_naive
-from tsfm_peft.models.timesfm import TimesFmOptions, build_timesfm
+from tsfm_peft.models.timesfm import (
+    TimesFmOptions,
+    TinyTimesFmOptions,
+    build_timesfm,
+    build_tiny_timesfm,
+)
 
 
 @dataclass(frozen=True)
@@ -35,6 +40,13 @@ class ModelSpec:
         extra: Name of the ``pyproject`` optional-dependency group the adapter needs, or
             ``None`` if it runs on the core dependencies alone.
         description: One-line description for documentation.
+        finetunable: Whether the adapter implements
+            :class:`~tsfm_peft.models.base.FineTunableModel`. Checked when a config carries a
+            ``training`` block, so asking to fine-tune a baseline fails at load time rather
+            than after the data is downloaded.
+        is_fixture: Whether the adapter exists only to exercise the pipeline. Fixtures carry
+            no pretrained weights and their forecasts are meaningless; the flag is what keeps
+            a smoke run from being mistaken for a benchmark row.
     """
 
     name: str
@@ -42,10 +54,18 @@ class ModelSpec:
     builder: Callable[[Any], ForecastModel]
     extra: str | None
     description: str
+    finetunable: bool = False
+    is_fixture: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Return the static fields as a JSON-serialisable mapping."""
-        return {"name": self.name, "extra": self.extra, "description": self.description}
+        return {
+            "name": self.name,
+            "extra": self.extra,
+            "description": self.description,
+            "finetunable": self.finetunable,
+            "is_fixture": self.is_fixture,
+        }
 
 
 MODELS: dict[str, ModelSpec] = {
@@ -62,6 +82,16 @@ MODELS: dict[str, ModelSpec] = {
         builder=build_timesfm,
         extra="models",
         description="TimesFM 2.5 (200M) via the transformers port; decoder-only, 9 quantiles.",
+        finetunable=True,
+    ),
+    "timesfm_2p5_tiny": ModelSpec(
+        name="timesfm_2p5_tiny",
+        options_model=TinyTimesFmOptions,
+        builder=build_tiny_timesfm,
+        extra="models",
+        description="Randomly initialised tiny TimesFM 2.5; a CPU smoke fixture, not a model.",
+        finetunable=True,
+        is_fixture=True,
     ),
 }
 
@@ -102,6 +132,11 @@ def validate_options(name: str, options: dict[str, Any] | None) -> BaseModel:
         The validated options instance.
     """
     return get_model_spec(name).options_model.model_validate(options or {})
+
+
+def is_finetunable(name: str) -> bool:
+    """Return whether the registered adapter supports fine-tuning."""
+    return get_model_spec(name).finetunable
 
 
 def build_model(name: str, options: BaseModel | dict[str, Any] | None = None) -> ForecastModel:

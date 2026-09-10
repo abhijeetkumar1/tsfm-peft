@@ -6,9 +6,11 @@ import pytest
 from tsfm_peft.models.base import DatasetContext, Forecast, ForecastModel
 from tsfm_peft.models.naive import SeasonalNaiveModel, SeasonalNaiveOptions
 from tsfm_peft.models.registry import (
+    MODELS,
     available_models,
     build_model,
     get_model_spec,
+    is_finetunable,
     validate_options,
 )
 
@@ -241,8 +243,18 @@ class TestSeasonalNaive:
 
 
 class TestRegistry:
-    def test_lists_both_v01_adapters(self):
-        assert available_models() == ("seasonal_naive", "timesfm_2p5")
+    def test_lists_the_registered_adapters(self):
+        assert available_models() == ("seasonal_naive", "timesfm_2p5", "timesfm_2p5_tiny")
+
+    def test_only_the_tiny_adapter_is_a_fixture(self):
+        # The flag is what stops a smoke run reaching the results table, so it matters that
+        # exactly the fixture carries it.
+        fixtures = {name for name, spec in MODELS.items() if spec.is_fixture}
+        assert fixtures == {"timesfm_2p5_tiny"}
+
+    def test_the_baseline_is_not_finetunable(self):
+        assert not is_finetunable("seasonal_naive")
+        assert is_finetunable("timesfm_2p5")
 
     def test_unknown_model_names_the_alternatives(self):
         with pytest.raises(KeyError, match="unknown model 'moirai'"):
