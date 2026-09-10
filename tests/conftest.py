@@ -1,9 +1,9 @@
 """Shared synthetic fixtures. Nothing here touches the network or the dataset cache."""
 
-import numpy as np
 import pytest
 
 from tsfm_peft.data.dataset import TimeSeriesDataset
+from tsfm_peft.data.synthetic import make_synthetic_dataset
 
 
 def build_dataset(
@@ -14,27 +14,18 @@ def build_dataset(
     seed: int = 0,
     name: str = "synthetic",
 ) -> TimeSeriesDataset:
-    """Build a deterministic seasonal + trend + noise dataset."""
-    rng = np.random.default_rng(seed)
-    t = np.arange(length, dtype=np.float64)
-    arrays = []
-    for i in range(n_series):
-        level = 10.0 * (i + 1)
-        values = (
-            level
-            + 0.01 * t
-            + 3.0 * np.sin(2.0 * np.pi * t / seasonality)
-            + rng.normal(0.0, 0.1, size=length)
-        )
-        arrays.append((f"s{i}", values))
-    return TimeSeriesDataset.from_arrays(
-        name,
-        arrays,
-        freq=freq,
+    """Build a deterministic seasonal + trend + noise dataset.
+
+    Delegates to the library generator so the fixture and the registered ``synthetic``
+    dataset cannot drift apart.
+    """
+    return make_synthetic_dataset(
+        n_series=n_series,
+        length=length,
         seasonality=seasonality,
-        license="CC0-1.0",
-        source_url="synthetic://",
-        description="Deterministic synthetic series for tests.",
+        freq=freq,
+        seed=seed,
+        name=name,
     )
 
 

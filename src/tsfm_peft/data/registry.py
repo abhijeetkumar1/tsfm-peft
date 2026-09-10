@@ -20,6 +20,14 @@ from tsfm_peft.data.loaders import (
     load_etth1,
     load_nn5_daily,
 )
+from tsfm_peft.data.synthetic import (
+    DEFAULT_SEASONALITY as SYNTHETIC_SEASONALITY,
+)
+from tsfm_peft.data.synthetic import (
+    SYNTHETIC_LICENSE,
+    SYNTHETIC_SOURCE,
+    load_synthetic,
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +52,15 @@ class DatasetSpec:
     source_url: str
     description: str
 
+    @property
+    def is_generated(self) -> bool:
+        """Whether the data is generated locally rather than downloaded.
+
+        The README datasets table and the results table both skip generated fixtures:
+        they have no upstream to attribute and no number worth publishing.
+        """
+        return self.source_url.startswith("synthetic://")
+
     def to_dict(self) -> dict[str, Any]:
         """Return the static fields as a JSON-serialisable mapping."""
         return {
@@ -53,10 +70,22 @@ class DatasetSpec:
             "license": self.license,
             "source_url": self.source_url,
             "description": self.description,
+            "is_generated": self.is_generated,
         }
 
 
 DATASETS: dict[str, DatasetSpec] = {
+    # A generated smoke fixture, registered so the CPU end-to-end path is driven by the
+    # same code as a real run. Never publish a number computed on it.
+    "synthetic": DatasetSpec(
+        name="synthetic",
+        loader=load_synthetic,
+        freq="h",
+        seasonality=SYNTHETIC_SEASONALITY,
+        license=SYNTHETIC_LICENSE,
+        source_url=SYNTHETIC_SOURCE,
+        description="Generated trend + seasonal + noise, 3 series, 600 steps. Smoke fixture.",
+    ),
     "etth1": DatasetSpec(
         name="etth1",
         loader=load_etth1,

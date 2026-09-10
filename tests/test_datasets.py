@@ -15,15 +15,25 @@ CONFIG_DIR = Path(__file__).resolve().parents[1] / "configs" / "data"
 
 class TestRegistry:
     def test_v01_datasets_are_registered(self):
-        assert available_datasets() == ("etth1", "nn5_daily")
+        assert available_datasets() == ("etth1", "nn5_daily", "synthetic")
 
     def test_specs_declare_a_license_and_a_source(self):
         # The README datasets table is generated from these; an empty field would ship a
         # dataset with no attribution.
         for spec in DATASETS.values():
             assert spec.license
-            assert spec.source_url.startswith("https://")
             assert spec.description
+            assert spec.source_url
+
+    def test_downloaded_datasets_cite_an_https_source(self):
+        for spec in DATASETS.values():
+            if spec.is_generated:
+                continue
+            assert spec.source_url.startswith("https://")
+
+    def test_only_the_smoke_fixture_is_generated(self):
+        generated = {name for name, spec in DATASETS.items() if spec.is_generated}
+        assert generated == {"synthetic"}
 
     def test_seasonality_matches_the_frequency(self):
         assert get_spec("etth1").seasonality == 24
