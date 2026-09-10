@@ -22,7 +22,7 @@ import zipfile
 from pathlib import Path
 
 _CHUNK = 1 << 20
-_USER_AGENT = "tsfm-peft/0.1 (+https://github.com/abhijeet/tsfm-peft)"
+_USER_AGENT = "tsfm-peft/0.1 (+https://github.com/abhijeetkumar1/tsfm-peft)"
 
 
 class ChecksumMismatchError(RuntimeError):
