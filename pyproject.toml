@@ -88,7 +88,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D100", "D103", "ANN201", "ANN001"]
+# Test names are the documentation; classes are used purely for grouping.
+"tests/*" = ["D100", "D101", "D102", "D103", "ANN201", "ANN001", "ANN202"]
 "scripts/*" = ["D100"]
 
 [tool.ruff.lint.pydocstyle]
