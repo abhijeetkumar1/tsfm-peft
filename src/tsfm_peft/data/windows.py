@@ -236,6 +236,92 @@ def stack_windows(windows: Sequence[Window]) -> tuple[Array, Array, tuple[str, .
     return contexts, targets, tuple(w.series_id for w in windows)
 
 
+def training_origins(
+    fit_end: int, *, horizon: int, context_length: int, stride: int
+) -> tuple[int, ...]:
+    """Return the ascending forecast origins of the training windows of one series.
+
+    Origins are laid out backwards from ``fit_end - horizon`` in steps of ``stride``, so the
+    window nearest the fit boundary -- the one whose statistics most resemble the evaluation
+    region -- is always included regardless of how the stride divides the region.
+
+    Args:
+        fit_end: Exclusive end of the fit region. Nothing at or beyond it is reachable.
+        horizon: Forecast horizon in steps.
+        context_length: Number of past observations per window.
+        stride: Step between consecutive origins.
+
+    Returns:
+        The origins, ascending. Empty if the fit region cannot hold a single window.
+    """
+    last = fit_end - horizon
+    if last < context_length:
+        return ()
+    count = 1 + (last - context_length) // stride
+    return _origins(last, count, stride)
+
+
+def make_training_windows(
+    split: BacktestSplit, *, stride: int | None = None, max_per_series: int | None = None
+) -> tuple[Window, ...]:
+    """Cut the windows a fine-tuning run is allowed to train on.
+
+    LEAKAGE BOUNDARY. Windows are cut from ``split.train[series_id]``, which is
+    ``values[:fit_end]``, rather than from the full series. Slicing the array first means an
+    origin arithmetic error cannot reach the validation or test region -- it raises out of
+    :func:`cut_window` instead of silently training on data the model is scored against.
+
+    Args:
+        split: The backtest split. Only its fit regions are read.
+        stride: Step between consecutive origins. Defaults to the protocol's horizon, giving
+            non-overlapping targets so no observation is trained on twice per epoch.
+        max_per_series: Keep at most this many windows per series, the ones closest to the
+            fit boundary. ``None`` keeps all of them.
+
+    Returns:
+        The windows, series-major and ascending by origin within each series.
+
+    Raises:
+        ValueError: If ``stride`` or ``max_per_series`` is not positive, or if the fit region
+            of any series is too short to hold a single window.
+    """
+    protocol = split.protocol
+    step = protocol.horizon if stride is None else stride
+    if step < 1:
+        raise ValueError(f"stride must be >= 1; got {step}")
+    if max_per_series is not None and max_per_series < 1:
+        raise ValueError(f"max_per_series must be >= 1; got {max_per_series}")
+
+    windows: list[Window] = []
+    for series_id, fit_region in split.train.items():
+        origins = training_origins(
+            fit_region.size,
+            horizon=protocol.horizon,
+            context_length=protocol.context_length,
+            stride=step,
+        )
+        if not origins:
+            raise ValueError(
+                f"series {series_id!r}: its {fit_region.size}-observation fit region cannot "
+                f"hold a training window of context_length {protocol.context_length} plus "
+                f"horizon {protocol.horizon}. Shorten the context, shorten the horizon, or "
+                "reserve fewer evaluation windows."
+            )
+        if max_per_series is not None:
+            origins = origins[-max_per_series:]
+        windows.extend(
+            cut_window(
+                series_id,
+                fit_region,
+                origin,
+                horizon=protocol.horizon,
+                context_length=protocol.context_length,
+            )
+            for origin in origins
+        )
+    return tuple(windows)
+
+
 @dataclass(frozen=True, eq=False)
 class BacktestSplit:
     """A dataset partitioned into fit regions and rolling-origin evaluation windows.
