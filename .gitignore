@@ -23,6 +23,9 @@ htmlcov/
 /.cache/
 
 # Run outputs. Metrics JSON under results/ IS committed; checkpoints are not.
+# Fine-tuned adapters land in results/adapters/<experiment>/; the weights are covered
+# by *.safetensors below but the directory carries a config and a card too.
+/results/adapters/
 /runs/
 /checkpoints/
 *.ckpt

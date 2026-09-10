@@ -1,0 +1,41 @@
+# TimesFM 2.5 + LoRA on NN5 Daily.
+#
+# Shares ../data/nn5_daily.yaml with the zero-shot arm.
+#
+# The fit region is 567 steps per series; at context 256 and horizon 56 that is 5 training
+# windows per series, 555 across the 111 series -- an order of magnitude fewer distinct
+# windows than ETTh1 offers, and worth remembering when comparing how much the two datasets
+# gain from fine-tuning. Fewer steps here for the same reason.
+#
+# The hyperparameters below are documented starting points, not tuned values.
+name: nn5_daily-timesfm-lora
+data: ../data/nn5_daily.yaml
+model:
+  name: timesfm_2p5
+  options:
+    checkpoint: google/timesfm-2.5-200m-transformers
+    revision: null
+    device: auto
+    dtype: float32
+    batch_size: 32
+    clamp_negative: per_series
+    peft:
+      method: lora
+      rank: 16
+      alpha: 32
+      dropout: 0.0
+      target_modules: [q_proj, k_proj, v_proj, o_proj, fc1, fc2]
+training:
+  max_steps: 600
+  batch_size: 8
+  learning_rate: 0.0001
+  warmup_steps: 30
+  schedule: cosine
+  grad_clip: 1.0
+  eval_every: 60
+  patience: 3
+  selection_metric: mase
+  save_adapter: true
+seed: 0
+notes: >-
+  LoRA arm. Compare against nn5_daily-timesfm-zeroshot, which shares the data config.

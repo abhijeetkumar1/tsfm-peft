@@ -182,10 +182,12 @@ def adapter_state(module: Any) -> dict[str, Any]:
     """
     from peft import get_peft_model_state_dict
 
-    return {
-        key: value.detach().to("cpu").clone()
-        for key, value in get_peft_model_state_dict(module).items()
-    }
+    # save_embedding_layers="auto" makes peft probe the HuggingFace hub for the base model's
+    # config to decide whether the vocabulary changed. TimesFM has no vocabulary, and a
+    # network round trip on every checkpoint would be a strange thing to find in a training
+    # loop -- so the question is answered here instead of asked.
+    state = get_peft_model_state_dict(module, save_embedding_layers=False)
+    return {key: value.detach().to("cpu").clone() for key, value in state.items()}
 
 
 def load_adapter_state(module: Any, state: dict[str, Any]) -> None:
@@ -196,14 +198,23 @@ def load_adapter_state(module: Any, state: dict[str, Any]) -> None:
         state: The state dict to restore.
 
     Raises:
-        ValueError: If any adapter tensor in the module was left unset.
+        ValueError: If the state is empty, or carries keys the module has no place for.
     """
     from peft import set_peft_model_state_dict
 
+    if not state:
+        raise ValueError("adapter state is empty; there is nothing to restore")
     result = set_peft_model_state_dict(module, state)
-    missing = getattr(result, "missing_keys", ())
-    if missing:  # pragma: no cover - defensive
-        raise ValueError(f"adapter state is missing {len(missing)} keys, e.g. {missing[:3]}")
+    # peft loads non-strictly, so `missing_keys` lists the whole frozen base model and says
+    # nothing. `unexpected_keys` is the one that means something: a key that found no home
+    # is a state dict from a different adapter configuration, and loading it would leave the
+    # model silently holding a mix of two runs' weights.
+    unexpected = getattr(result, "unexpected_keys", ())
+    if unexpected:
+        raise ValueError(
+            f"adapter state has {len(unexpected)} keys this model has no parameter for, "
+            f"e.g. {list(unexpected)[:3]}; it was saved from a different peft configuration"
+        )
 
 
 def save_adapter(module: Any, path: str | Path) -> Path:
@@ -222,5 +233,5 @@ def save_adapter(module: Any, path: str | Path) -> Path:
     """
     destination = Path(path)
     destination.mkdir(parents=True, exist_ok=True)
-    module.save_pretrained(str(destination))
+    module.save_pretrained(str(destination), save_embedding_layers=False)
     return destination

@@ -54,6 +54,31 @@ jobs:
       - name: Test
         run: uv run pytest -m "not slow and not gpu and not network" --cov=tsfm_peft --cov-report=term-missing
 
+  models:
+    name: pytest (models extra, CPU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      # The job the torch-free matrix cannot do: prove the fine-tuning path actually
+      # runs. The tiny fixture model is randomly initialised, so nothing is downloaded
+      # and nothing here is a benchmark -- it exercises the real architecture, the real
+      # peft wiring and the real optimiser end to end on CPU.
+      #
+      # Installed from the lockfile like every other job, which on Linux means the
+      # CUDA-flavoured torch wheel even though this runner has no GPU. Pinning a CPU
+      # index here would mean CI resolving different wheels than a contributor does,
+      # which is the more expensive kind of difference; the uv cache absorbs the size.
+      - name: Install
+        run: uv sync --extra dev --extra models
+      - name: Test
+        run: uv run pytest -m "not slow and not gpu and not network"
+      - name: Fine-tune end to end
+        run: uv run tsfm-peft run configs/experiments/synthetic-timesfm-tiny-lora.yaml
+
   docker:
     name: docker build
     runs-on: ubuntu-latest

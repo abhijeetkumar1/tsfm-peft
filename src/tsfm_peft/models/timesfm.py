@@ -39,7 +39,13 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from tsfm_peft.models.base import Array, FineTunableModel, Forecast, as_context_batch
-from tsfm_peft.models.lora import PeftOptions, apply_peft
+from tsfm_peft.models.lora import (
+    PeftOptions,
+    adapter_state,
+    apply_peft,
+    load_adapter_state,
+    save_adapter,
+)
 
 #: The checkpoint v0.1 benchmarks. Pinned by name; the revision is pinned in the config.
 DEFAULT_CHECKPOINT = "google/timesfm-2.5-200m-transformers"
@@ -231,6 +237,27 @@ class BaseTimesFmModel(FineTunableModel):
     def parameter_counts(self) -> dict[str, Any]:
         """Count total and trainable parameters of the loaded module."""
         return count_parameters(self._module)
+
+    @property
+    def supports_checkpointing(self) -> bool:
+        """True once adapters are attached; only the adapter weights are checkpointed.
+
+        Without a peft block every one of the 200M base weights would be trainable, and
+        snapshotting them per validation pass is neither cheap nor what this repo is for.
+        """
+        return self._options.peft is not None
+
+    def checkpoint_state(self) -> dict[str, Any]:
+        """Return a CPU copy of the adapter weights."""
+        return adapter_state(self._module)
+
+    def restore_checkpoint(self, state: dict[str, Any]) -> None:
+        """Load adapter weights from :meth:`checkpoint_state`."""
+        load_adapter_state(self._module, state)
+
+    def save_checkpoint(self, path: Any) -> Any:
+        """Write the adapter weights and their config to a directory."""
+        return save_adapter(self._module, path)
 
     def _source_description(self) -> dict[str, Any]:
         """Return the fields describing where the weights came from."""

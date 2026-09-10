@@ -83,8 +83,13 @@ def _list() -> int:
         print(f"  {spec.name:<12} {spec.freq:<3} m={spec.seasonality:<3} {spec.license}{marker}")
     print("\nmodels")
     for spec in MODELS.values():
-        extra = f"  [needs --extra {spec.extra}]" if spec.extra else ""
-        print(f"  {spec.name:<16} {spec.description}{extra}")
+        notes = [f"needs --extra {spec.extra}"] if spec.extra else []
+        if spec.finetunable:
+            notes.append("LoRA/DoRA")
+        if spec.is_fixture:
+            notes.append("smoke fixture, not a benchmark")
+        suffix = f"  [{'; '.join(notes)}]" if notes else ""
+        print(f"  {spec.name:<16} {spec.description}{suffix}")
     return 0
 
 

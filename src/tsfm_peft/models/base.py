@@ -309,6 +309,28 @@ class FineTunableModel(ForecastModel):
         """Return the parameters the optimiser should update."""
         return [p for p in self.module.parameters() if p.requires_grad]
 
+    @property
+    def supports_checkpointing(self) -> bool:
+        """Whether the trainer can snapshot and restore this model's trained weights.
+
+        Checkpoint selection is not optional dressing: without it a run reports whatever the
+        last step left behind. An adapter that cannot be snapshotted cheaply says so here
+        rather than failing at the first validation pass, an hour into a run.
+        """
+        return False
+
+    def checkpoint_state(self) -> dict[str, Any]:
+        """Return a detached CPU copy of the trained weights."""
+        raise NotImplementedError(f"{self.name} cannot snapshot its trained weights")
+
+    def restore_checkpoint(self, state: dict[str, Any]) -> None:
+        """Load weights previously returned by :meth:`checkpoint_state`."""
+        raise NotImplementedError(f"{self.name} cannot restore trained weights")
+
+    def save_checkpoint(self, path: Any) -> Any:
+        """Write the trained weights to ``path`` and return where they went."""
+        raise NotImplementedError(f"{self.name} cannot save trained weights")
+
     def set_train_mode(self, training: bool) -> None:
         """Switch the underlying module between train and eval mode.
 

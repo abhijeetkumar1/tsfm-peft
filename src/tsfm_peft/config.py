@@ -18,7 +18,13 @@ from tsfm_peft.data.registry import available_datasets, load_dataset
 from tsfm_peft.data.scaling import SCALERS
 from tsfm_peft.data.windows import BacktestProtocol, BacktestSplit, make_split
 from tsfm_peft.models.base import ForecastModel
-from tsfm_peft.models.registry import available_models, build_model, validate_options
+from tsfm_peft.models.registry import (
+    available_models,
+    build_model,
+    is_finetunable,
+    validate_options,
+)
+from tsfm_peft.training import TrainingConfig
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -142,6 +148,8 @@ class ExperimentConfig(BaseModel):
             safe, since it becomes a filename.
         data: Dataset and evaluation protocol.
         model: The adapter and its options.
+        training: Fine-tuning hyperparameters. ``None`` is the zero-shot arm: the model is
+            evaluated exactly as it was downloaded.
         seed: Seed for every RNG. Recorded in the artifact.
         deterministic: Select deterministic kernels. Costs a few percent of throughput, and
             the wall-clock figures in the artifact are only comparable at the same setting.
@@ -153,9 +161,40 @@ class ExperimentConfig(BaseModel):
     name: str
     data: DataConfig
     model: ModelConfig
+    training: TrainingConfig | None = None
     seed: int = Field(default=0, ge=0)
     deterministic: bool = True
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _training_can_run(self) -> ExperimentConfig:
+        """Reject a training block the rest of the config cannot honour.
+
+        All three of these are only discoverable at run time otherwise -- after a dataset
+        download and a checkpoint load, which on a fresh machine is several minutes and a
+        gigabyte before anything says the run was misconfigured.
+        """
+        if self.training is None:
+            return self
+        if not is_finetunable(self.model.name):
+            raise ValueError(
+                f"model {self.model.name!r} cannot be fine-tuned, but the config has a "
+                "training block; remove it or choose a model that can"
+            )
+        options = self.model.resolved_options()
+        if "peft" in type(options).model_fields and options.peft is None:
+            raise ValueError(
+                "the config asks to train but configures no peft block, so every weight "
+                "would stay frozen and the run would change nothing. v0.1 fine-tunes with "
+                "LoRA or DoRA only: add a model.options.peft block."
+            )
+        if self.training.eval_every and not self.data.protocol.n_val_windows:
+            raise ValueError(
+                f"training validates every {self.training.eval_every} steps but the "
+                "protocol reserves no validation windows; set n_val_windows > 0, or "
+                "eval_every: 0 to train for a fixed number of steps and keep the last one"
+            )
+        return self
 
     @field_validator("name")
     @classmethod
