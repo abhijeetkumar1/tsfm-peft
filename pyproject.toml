@@ -8,7 +8,7 @@ version = "0.1.0.dev0"
 description = "Parameter-efficient fine-tuning and honest benchmarking of time series foundation models."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-license = "MIT"
+license = "Apache-2.0"
 authors = [{ name = "Abhijeet", email = "akratnayka@gmail.com" }]
 keywords = ["time-series", "forecasting", "foundation-models", "lora", "dora", "peft"]
 classifiers = [

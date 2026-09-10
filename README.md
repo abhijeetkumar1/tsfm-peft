@@ -47,5 +47,5 @@ uvx ruff check . && uvx ruff format --check .
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Dataset licenses are documented separately in the datasets
+Apache-2.0, see [LICENSE](LICENSE). Dataset licenses are documented separately in the datasets
 section of the final README.
