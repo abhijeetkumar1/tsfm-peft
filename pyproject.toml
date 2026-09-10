@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tsfm-peft"
+version = "0.1.0.dev0"
+description = "Parameter-efficient fine-tuning and honest benchmarking of time series foundation models."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "MIT"
+authors = [{ name = "Abhijeet", email = "akratnayka@gmail.com" }]
+keywords = ["time-series", "forecasting", "foundation-models", "lora", "dora", "peft"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime deps are deliberately minimal. Heavy model deps live in the `models`
+# extra so that `pytest` (data, windowing, metrics, config) runs on CPU in CI
+# without pulling torch/transformers.
+dependencies = [
+  "numpy>=1.26",
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+models = [
+  "torch>=2.4",
+  "transformers>=5.3",
+  "peft>=0.17",
+  "huggingface-hub>=0.28",
+  "safetensors>=0.4",
+]
+wandb = ["wandb>=0.17"]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/abhijeet/tsfm-peft"
+Issues = "https://github.com/abhijeet/tsfm-peft/issues"
+
+[project.scripts]
+tsfm-peft = "tsfm_peft.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tsfm_peft"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+  "slow: takes more than a few seconds; excluded from the CPU CI budget",
+  "gpu: requires a CUDA device",
+  "network: downloads data or model weights",
+]
+filterwarnings = ["error::DeprecationWarning:tsfm_peft.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",   # pycodestyle + pyflakes
+  "I",             # isort
+  "UP",            # pyupgrade
+  "B",             # bugbear
+  "SIM",           # simplify
+  "RUF",           # ruff-specific
+  "NPY",           # numpy legacy random / api
+  "PT",            # pytest style
+  "ANN",           # annotations
+  "D",             # docstrings
+]
+ignore = [
+  "D107",  # __init__ docstring; documented on the class
+  "D203", "D213",  # mutually exclusive with D211/D212
+  "ANN401",  # Any is occasionally the honest annotation
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D103", "ANN201", "ANN001"]
+"scripts/*" = ["D100"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+docstring-code-format = true

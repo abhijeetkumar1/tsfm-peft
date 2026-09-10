@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Data and model caches -- never commit these (see README: Datasets).
+data/
+cache/
+.cache/
+~/.cache/tsfm_peft/
+
+# Run outputs. Metrics JSON under results/ IS committed; checkpoints are not.
+runs/
+checkpoints/
+*.ckpt
+*.safetensors
+wandb/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
