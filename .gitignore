@@ -15,14 +15,16 @@ coverage.xml
 htmlcov/
 
 # Data and model caches -- never commit these (see README: Datasets).
-data/
-cache/
-.cache/
-~/.cache/tsfm_peft/
+# Anchored with a leading slash: an unanchored `data/` also matches
+# src/tsfm_peft/data/ and configs/data/, which silently excluded the whole data
+# package from the repository.
+/data/
+/cache/
+/.cache/
 
 # Run outputs. Metrics JSON under results/ IS committed; checkpoints are not.
-runs/
-checkpoints/
+/runs/
+/checkpoints/
 *.ckpt
 *.safetensors
 wandb/
