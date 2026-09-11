@@ -45,6 +45,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="validate the configs and exit without loading data or weights",
     )
 
+    table = subparsers.add_parser("table", help="render the README results table")
+    table.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="where metrics artifacts live (default: $TSFM_PEFT_RESULTS or ./results)",
+    )
+    table.add_argument(
+        "--configs",
+        type=Path,
+        default=None,
+        help="experiment config directory; arms with no artifact render as pending rows",
+    )
+    table.add_argument(
+        "--readme",
+        type=Path,
+        default=Path("README.md"),
+        help="README to write into or check against (default: README.md)",
+    )
+    table.add_argument(
+        "--write", action="store_true", help="write the table into the README between its markers"
+    )
+    table.add_argument(
+        "--check",
+        action="store_true",
+        help="exit non-zero if the README table is not what the artifacts say it should be",
+    )
+    table.add_argument(
+        "--include-fixtures",
+        action="store_true",
+        help="keep synthetic-dataset and fixture-model rows, which are normally excluded",
+    )
+
     subparsers.add_parser("list", help="list registered datasets and models")
     return parser
 
@@ -69,6 +102,34 @@ def _run(args: argparse.Namespace) -> int:
         )
         print(summarise(outcome))
         print()
+    return 0
+
+
+def _table(args: argparse.Namespace) -> int:
+    """Run the ``table`` subcommand."""
+    from tsfm_peft.table import build, render_readme
+
+    block = build(args.results_dir, args.configs, include_fixtures=args.include_fixtures)
+    if not (args.write or args.check):
+        print(block)
+        return 0
+
+    current = args.readme.read_text(encoding="utf-8")
+    updated = render_readme(current, block)
+    if args.check:
+        if updated == current:
+            print(f"{args.readme}: results table is up to date")
+            return 0
+        # Deliberately a failure rather than a silent fix: in CI this is the check that
+        # stops a hand-edited number, or a stale one, from reaching the README.
+        print(
+            f"{args.readme}: results table is out of date. Run "
+            "`tsfm-peft table --configs configs/experiments --write` and commit the result.",
+            file=sys.stderr,
+        )
+        return 1
+    args.readme.write_text(updated, encoding="utf-8")
+    print(f"{args.readme}: results table written")
     return 0
 
 
@@ -99,6 +160,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "run":
         return _run(args)
+    if args.command == "table":
+        return _table(args)
     if args.command == "list":
         return _list()
     parser.print_help()

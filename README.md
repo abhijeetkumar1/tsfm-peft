@@ -3,9 +3,43 @@
 Parameter-efficient fine-tuning (LoRA, DoRA) for time series foundation models, benchmarked
 honestly against zero-shot baselines.
 
-> **Status: v0.1 in progress.** This README is a placeholder. The real one — opening with a
-> results table generated from run artifacts by `scripts/build_readme_table.py` — lands with
-> milestone 6. No benchmark numbers appear here until they come from a real run.
+> **Status: v0.1 in progress.** This README is a placeholder; the real one lands with
+> milestone 6. The table below is generated from run artifacts by
+> `scripts/build_readme_table.py` and is never hand-edited, so no benchmark number appears
+> here until it comes from a real run.
+
+## Results
+
+<!-- BEGIN RESULTS TABLE -->
+
+### etth1
+
+Test windows: horizon 96, context 512, 8 rolling origins per series.
+
+| Arm | MASE | sMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r4 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r8 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+
+### nn5_daily
+
+Test windows: horizon 56, context 256, 3 rolling origins per series.
+
+| Arm | MASE | sMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+
+- `--` marks an arm whose config exists but has not been run yet.
+
+<!-- END RESULTS TABLE -->
 
 ## Scope of v0.1
 
