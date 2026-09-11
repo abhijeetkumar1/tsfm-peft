@@ -17,6 +17,7 @@ from tsfm_peft.runtime import (
     hardware_info,
     package_versions,
     peak_host_memory_bytes,
+    scheduling_info,
     set_seed,
     track_resources,
     watch_nondeterminism,
@@ -163,6 +164,34 @@ class TestWatchNondeterminism:
             pass
         assert len(seen) == 1
         assert len(shown) == 1
+
+
+class TestSchedulingInfo:
+    # The point of the field is the cost columns: a timing taken while other arms competed
+    # for the host is not the measurement a serial run produces.
+
+    def test_reports_the_concurrency_that_was_set(self, monkeypatch):
+        monkeypatch.setenv("TSFM_PEFT_CONCURRENCY", "4")
+        assert scheduling_info()["concurrent_runs"] == 4
+
+    def test_unset_is_unknown_not_one(self, monkeypatch):
+        # Silence is not a claim that the run had the machine to itself.
+        monkeypatch.delenv("TSFM_PEFT_CONCURRENCY", raising=False)
+        assert scheduling_info()["concurrent_runs"] is None
+
+    @pytest.mark.parametrize("value", ["", "two", "0", "-1", "2.5"])
+    def test_unusable_values_are_unknown_rather_than_fatal(self, monkeypatch, value):
+        # Assembled after the run has finished; a typo must not destroy a completed arm.
+        monkeypatch.setenv("TSFM_PEFT_CONCURRENCY", value)
+        assert scheduling_info()["concurrent_runs"] is None
+
+    def test_records_the_visible_devices(self, monkeypatch):
+        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
+        assert scheduling_info()["visible_devices"] == "1"
+
+    def test_is_in_the_environment_block(self, monkeypatch):
+        monkeypatch.setenv("TSFM_PEFT_CONCURRENCY", "2")
+        assert collect_environment()["scheduling"]["concurrent_runs"] == 2
 
 
 class TestProvenance:
