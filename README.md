@@ -24,7 +24,10 @@ Test windows: horizon 96, context 512, 8 rolling origins per series, 7 series, 5
 | TimesFM 2.5 + LoRA r32 | 0.886 | 29.189 | 24.019 | 0.189 | 0.176 | 9.83M (4.08%) | 1.51 GB | 4m 36s |
 | TimesFM 2.5 + LoRA r64 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 | TimesFM 2.5 + LoRA r128 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r4 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r8 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 | TimesFM 2.5 + DoRA r16 | 0.917 | 30.262 | 24.365 | 0.193 | 0.184 | 5.07M (2.14%) | 1.78 GB | 11m 33s |
+| TimesFM 2.5 + DoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 | TimesFM 2.5 + DoRA r64 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 | TimesFM 2.5 + DoRA r128 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 
@@ -70,12 +73,12 @@ uv run tsfm-peft run configs/experiments/{etth1,nn5_daily}-*.yaml && uv run tsfm
 ```
 
 The first command installs torch, transformers and peft alongside the package. The second
-runs all fifteen arms and regenerates the table above from the artifacts they write. Datasets
+runs all eighteen arms and regenerates the table above from the artifacts they write. Datasets
 and checkpoint weights download on first use into `~/.cache/tsfm_peft` and
 `~/.cache/huggingface`; nothing is committed to this repository.
 
 Expect this to want a GPU. The zero-shot and seasonal-naive arms run on CPU in minutes; the
-eleven fine-tuning arms are 1000 steps each against a 231M-parameter checkpoint.
+fourteen fine-tuning arms are 1000 steps each against a 231M-parameter checkpoint.
 
 To run a single arm, or to see what a config resolves to without downloading anything:
 

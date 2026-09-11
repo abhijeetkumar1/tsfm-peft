@@ -6,12 +6,9 @@
 # adapted output channel -- and costs more per step. Both differences are in the
 # artifact.
 #
-# The DoRA rows exist at rank 16 (etth1-timesfm-dora.yaml), 64 and 128, so the method
-# comparison is available at three points rather than one. There is deliberately no DoRA
-# row at 4, 8 or 32: the question those ranks answer is about the rank curve, and one
-# method is enough to answer it.
-#
-# alpha moves with rank to hold alpha/rank at 2.0, as everywhere else in the sweep.
+# Every LoRA rank has a DoRA row at the same rank, so the two sweeps can be read against
+# each other point by point rather than at a single crossing. alpha moves with rank to
+# hold alpha/rank at 2.0, as everywhere else.
 name: etth1-timesfm-dora-r64
 data: ../data/etth1.yaml
 model:
