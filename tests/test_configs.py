@@ -9,6 +9,7 @@ and all of it is easy to break with a plausible-looking edit months from now.
 These tests are torch-free and run in the CPU CI job.
 """
 
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ EXPERIMENTS = sorted((REPO / "configs" / "experiments").glob("*.yaml"))
 #: Fields a row is allowed to differ in without changing what it measures.
 DESCRIPTIVE = {"name", "notes"}
 
-ABLATION_RANKS = (4, 8, 32)
+ABLATION_RANKS = (4, 8, 32, 64, 128)
 
 
 def experiment(stem: str):
@@ -141,3 +142,9 @@ class TestRankAblation:
     def test_covers_a_range_of_at_least_eight_times(self):
         ranks = {*ABLATION_RANKS, 16}
         assert max(ranks) / min(ranks) >= 8
+
+    def test_the_ranks_double(self):
+        # A sweep with a gap in it cannot say where the curve turns. Every row is twice the
+        # one below it, headline row included.
+        ranks = sorted({*ABLATION_RANKS, 16})
+        assert [b / a for a, b in pairwise(ranks)] == [2.0] * (len(ranks) - 1)
