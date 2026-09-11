@@ -32,13 +32,9 @@ ARMS=(
   etth1-timesfm-dora
   nn5_daily-timesfm-lora
   nn5_daily-timesfm-dora
-  etth1-timesfm-lora-r4
-  etth1-timesfm-lora-r8
   etth1-timesfm-lora-r32
   etth1-timesfm-lora-r64
   etth1-timesfm-lora-r128
-  etth1-timesfm-dora-r4
-  etth1-timesfm-dora-r8
   etth1-timesfm-dora-r32
   etth1-timesfm-dora-r64
   etth1-timesfm-dora-r128

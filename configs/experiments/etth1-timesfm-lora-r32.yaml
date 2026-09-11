@@ -1,6 +1,6 @@
 # Rank ablation on ETTh1: rank 32, alpha 64.
 #
-# One of six rows. The rank-16 row is etth1-timesfm-lora.yaml itself, which is why there is
+# One of four rows. The rank-16 row is etth1-timesfm-lora.yaml itself, which is why there is
 # no -r16 file: the headline arm and the ablation's midpoint are the same run, and running it
 # twice would put two artifacts behind one number.
 #
