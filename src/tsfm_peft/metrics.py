@@ -1,4 +1,4 @@
-"""Forecast accuracy metrics: MASE, sMAPE and weighted quantile loss.
+"""Forecast accuracy metrics: MASE, sMAPE, wMAPE and weighted quantile loss.
 
 Definitions follow the sources the numbers will be compared against:
 
@@ -7,6 +7,10 @@ Definitions follow the sources the numbers will be compared against:
 * **sMAPE** -- the M4 variant, ``200 * mean(|y - yhat| / (|y| + |yhat|))``, which is bounded
   in ``[0, 200]``. Note this is not the ``mean(2|y - yhat| / (y + yhat))`` form that can go
   negative; it is the one used for the M4 leaderboard.
+* **wMAPE** -- ``100 * sum|y - yhat| / sum|y|``, pooled over every row and step. The
+  weighted form, not the mean of per-row MAPEs: the normaliser is a sum over the whole set,
+  so a near-zero observation cannot blow the metric up on its own. Reported in percentage
+  points, like sMAPE.
 * **Weighted quantile loss** -- the GluonTS / Chronos definition: pinball loss summed over
   levels and normalised by the total absolute magnitude of the targets.
 
@@ -129,6 +133,46 @@ def smape(y_true: Any, y_pred: Any) -> Array:
     return 200.0 * ratio.mean(axis=1)
 
 
+def wmape(y_true: Any, y_pred: Any) -> float:
+    """Weighted MAPE: total absolute error as a percentage of total absolute magnitude.
+
+    A single pooled number rather than one value per row, because that is what makes it
+    robust: ``sum|y - yhat| / sum|y|`` normalises by the magnitude of the whole set, so an
+    observation near zero contributes its own small share of the denominator instead of
+    dividing its own error and dominating a per-row mean the way MAPE does.
+
+    Being magnitude-weighted, it has the same caveat as pooled WQL: over series of very
+    different scale the largest series decides most of the number, which is why
+    :func:`evaluate_forecasts` reports a macro variant next to it.
+
+    Args:
+        y_true: ``(n_rows, horizon)`` observed values.
+        y_pred: ``(n_rows, horizon)`` point forecasts.
+
+    Returns:
+        wMAPE in percentage points; ``0.0`` for an exactly-predicted all-zero target.
+
+    Raises:
+        ValueError: If the shapes disagree, or if the targets sum to zero magnitude while
+            the forecasts do not -- a relative error against nothing, which has no finite
+            value and is not worth publishing a stand-in for.
+    """
+    truth = _as_2d("y_true", y_true)
+    pred = _as_2d("y_pred", y_pred)
+    if truth.shape != pred.shape:
+        raise ValueError(f"shape mismatch: y_true {truth.shape} vs y_pred {pred.shape}")
+    total = float(np.abs(truth).sum())
+    error = float(np.abs(truth - pred).sum())
+    if total == 0.0:
+        # Mirrors smape's treatment of 0/0: predicting zero for zero is not an error.
+        if error == 0.0:
+            return 0.0
+        raise ValueError(
+            "wMAPE is undefined: the targets sum to zero magnitude but the forecasts do not"
+        )
+    return 100.0 * error / total
+
+
 def _validate_quantiles(levels: Sequence[float]) -> Array:
     """Coerce quantile levels to a strictly increasing float array in ``(0, 1)``."""
     arr = np.asarray(levels, dtype=np.float64)
@@ -207,6 +251,9 @@ class ForecastMetrics:
     Attributes:
         mase: Mean MASE over every (series, window) row.
         smape: Mean sMAPE over every (series, window) row.
+        wmape: wMAPE pooled across every row and step. Magnitude-weighted, so larger series
+            dominate it, for the same reason and in the same way as ``wql``.
+        wmape_macro: Mean of the per-series wMAPEs, each series counting once.
         wql: Weighted quantile loss pooled across all series. Series with larger magnitudes
             dominate this number by construction -- that is what "weighted" means here, and
             it is the definition the Chronos/GluonTS numbers use.
@@ -219,11 +266,13 @@ class ForecastMetrics:
         n_series: Number of distinct series evaluated.
         n_rows: Number of (series, window) forecast rows.
         horizon: Forecast horizon in steps.
-        per_series: Per-series ``{"mase", "smape", "wql", "n_windows"}`` breakdown.
+        per_series: Per-series ``{"mase", "smape", "wmape", "wql", "n_windows"}`` breakdown.
     """
 
     mase: float
     smape: float
+    wmape: float
+    wmape_macro: float
     wql: float
     wql_macro: float
     per_quantile_wql: dict[str, float]
@@ -238,6 +287,8 @@ class ForecastMetrics:
         return {
             "mase": self.mase,
             "smape": self.smape,
+            "wmape": self.wmape,
+            "wmape_macro": self.wmape_macro,
             "wql": self.wql,
             "wql_macro": self.wql_macro,
             "per_quantile_wql": dict(self.per_quantile_wql),
@@ -257,7 +308,7 @@ def evaluate_forecasts(
     scales: Any,
     levels: Sequence[float] = DEFAULT_QUANTILE_LEVELS,
 ) -> ForecastMetrics:
-    """Compute all three metrics for a set of backtest windows.
+    """Compute every metric for a set of backtest windows.
 
     Rows are (series, window) pairs in any order; ``series_ids`` maps each row back to its
     series so that the per-series breakdown and the macro-averaged WQL can be computed.
@@ -286,6 +337,7 @@ def evaluate_forecasts(
     row_mase = mase(truth, y_pred, scales)
     row_smape = smape(truth, y_pred)
     per_level, _ = quantile_losses(truth, y_pred_quantiles, quantiles)
+    point = _as_2d("y_pred", y_pred)
     preds_q = np.asarray(y_pred_quantiles, dtype=np.float64)
 
     ids = np.asarray(series_ids, dtype=object)
@@ -296,6 +348,7 @@ def evaluate_forecasts(
         per_series[str(series_id)] = {
             "mase": float(row_mase[rows].mean()),
             "smape": float(row_smape[rows].mean()),
+            "wmape": wmape(truth[rows], point[rows]),
             "wql": weighted_quantile_loss(truth[rows], preds_q[rows], quantiles),
             "n_windows": int(rows.sum()),
         }
@@ -303,6 +356,8 @@ def evaluate_forecasts(
     return ForecastMetrics(
         mase=float(row_mase.mean()),
         smape=float(row_smape.mean()),
+        wmape=wmape(truth, point),
+        wmape_macro=float(np.mean([m["wmape"] for m in per_series.values()])),
         wql=float(per_level.mean()),
         wql_macro=float(np.mean([m["wql"] for m in per_series.values()])),
         per_quantile_wql={

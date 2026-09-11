@@ -157,6 +157,7 @@ def summarise(outcome: RunOutcome) -> str:
         f"model           {model['name']}",
         f"MASE            {metrics.mase:.4f}",
         f"sMAPE           {metrics.smape:.4f}",
+        f"wMAPE           {metrics.wmape:.4f}  (macro {metrics.wmape_macro:.4f})",
         f"WQL             {metrics.wql:.4f}  (macro {metrics.wql_macro:.4f})",
         f"crossings       {outcome.result.quantile_crossing_rate:.4f}",
         f"trainable       {trainable:,} / {total:,}"

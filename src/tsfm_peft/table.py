@@ -60,6 +60,7 @@ COLUMNS = (
     "Arm",
     "MASE",
     "sMAPE",
+    "wMAPE",
     "WQL",
     "WQL (macro)",
     "Trained params",
@@ -405,6 +406,9 @@ def _row_cells(row: Row) -> list[str]:
         row.arm.label,
         _format_metric(results["mase"]),
         _format_metric(results["smape"]),
+        # ``.get``: wMAPE was added after the first artifacts were written, and a row from
+        # before it renders as missing rather than as a number the run never computed.
+        _format_metric(results.get("wmape")),
         _format_metric(results["wql"]),
         _format_metric(results["wql_macro"]),
         _format_parameters(artifact),
@@ -443,9 +447,10 @@ def _aggregate_rows(rows: Sequence[Row]) -> tuple[list[list[str]], list[str]]:
     An average taken over whichever subset happened to finish would move when an unrelated
     run completes, and would flatter whichever arm ran on the easier dataset.
 
-    The pooled WQL is excluded: it is dominated by whichever series have the largest
-    magnitudes, so averaging it across datasets of different scale measures mostly the
-    scales. The macro WQL, which normalises per series, is averaged instead.
+    The pooled WQL and pooled wMAPE are excluded: both are dominated by whichever series
+    have the largest magnitudes, so averaging them across datasets of different scale
+    measures mostly the scales. The macro variants, which normalise per series, are averaged
+    instead.
 
     Returns:
         The body rows, and the names of the datasets they average over.
@@ -467,14 +472,19 @@ def _aggregate_rows(rows: Sequence[Row]) -> tuple[list[list[str]], list[str]]:
             continue
         members = [covered[dataset] for dataset in datasets]
 
-        def mean(metric: str, members: Sequence[Row] = members) -> float:
-            return sum(row.results[metric] for row in members) / len(members)
+        def mean(metric: str, members: Sequence[Row] = members) -> float | None:
+            """Average a metric across datasets, or ``None`` if any row predates it."""
+            values = [row.results.get(metric) for row in members]
+            if any(value is None for value in values):
+                return None
+            return sum(values) / len(values)  # type: ignore[arg-type]
 
         body.append(
             [
                 arm.label,
                 _format_metric(mean("mase")),
                 _format_metric(mean("smape")),
+                _format_metric(mean("wmape_macro")),
                 _format_metric(mean("wql_macro")),
             ]
         )
@@ -577,8 +587,8 @@ def render(rows: Sequence[Row]) -> str:
 
     aggregate, datasets = _aggregate_rows(rows)
     if aggregate:
-        header = ("Arm", "MASE", "sMAPE", "WQL (macro)")
-        alignment = ("---", "---:", "---:", "---:")
+        header = ("Arm", "MASE", "sMAPE", "wMAPE (macro)", "WQL (macro)")
+        alignment = ("---", *("---:",) * (len(header) - 1))
         lines = [
             "| " + " | ".join(header) + " |",
             "|" + "|".join(alignment) + "|",
