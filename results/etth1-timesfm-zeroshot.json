@@ -1,0 +1,271 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-09-11T09:31:55+00:00",
+  "experiment": {
+    "name": "etth1-timesfm-zeroshot",
+    "notes": "Zero-shot baseline. Horizon 96 is within the checkpoint's 128-step single-decode horizon, so no autoregressive rollout is involved."
+  },
+  "config": {
+    "name": "etth1-timesfm-zeroshot",
+    "data": {
+      "dataset": "etth1",
+      "protocol": {
+        "horizon": 96,
+        "context_length": 512,
+        "n_test_windows": 8,
+        "n_val_windows": 2,
+        "stride": null
+      },
+      "scaler": "standard"
+    },
+    "model": {
+      "name": "timesfm_2p5",
+      "options": {
+        "checkpoint": "google/timesfm-2.5-200m-transformers",
+        "revision": null,
+        "device": "auto",
+        "dtype": "float32",
+        "batch_size": 32,
+        "clamp_negative": "per_series"
+      }
+    },
+    "training": null,
+    "seed": 0,
+    "deterministic": true,
+    "notes": "Zero-shot baseline. Horizon 96 is within the checkpoint's 128-step single-decode horizon, so no autoregressive rollout is involved."
+  },
+  "seed": {
+    "seed": 0,
+    "deterministic": true,
+    "python_hash_seed": "0",
+    "torch_seeded": true,
+    "cublas_workspace_config": ":4096:8",
+    "nondeterministic_kernels": []
+  },
+  "data": {
+    "dataset": {
+      "name": "etth1",
+      "freq": "h",
+      "seasonality": 24,
+      "n_series": 7,
+      "min_length": 17420,
+      "max_length": 17420,
+      "total_observations": 121940,
+      "license": "CC-BY-ND-4.0",
+      "source_url": "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv",
+      "description": "Electricity Transformer Temperature, hourly, 7 channels treated as independent univariate series."
+    },
+    "protocol": {
+      "horizon": 96,
+      "context_length": 512,
+      "n_test_windows": 8,
+      "n_val_windows": 2,
+      "stride": null
+    },
+    "effective_stride": 96,
+    "n_val_windows_total": 14,
+    "n_test_windows_total": 56,
+    "fit_end": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    },
+    "train_lengths": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    }
+  },
+  "model": {
+    "name": "timesfm_2p5",
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "max_horizon": 128,
+    "batch_size": 32,
+    "requires_external_scaling": false,
+    "total_parameters": 231289280,
+    "trainable_parameters": 231289280,
+    "frozen_parameters": 0,
+    "trainable_pct": 100.0,
+    "checkpoint": "google/timesfm-2.5-200m-transformers",
+    "revision": null,
+    "device": "cuda",
+    "dtype": "float32",
+    "clamp_negative": "per_series",
+    "force_flip_invariance": null,
+    "model_horizon": 128,
+    "patch_length": 32,
+    "median_head_index": 5,
+    "peft": null
+  },
+  "training": null,
+  "results": {
+    "window_set": "test",
+    "scaler_kind": null,
+    "quantile_crossing_rate": 6.975446428571428e-05,
+    "mase": 0.9049135681143277,
+    "smape": 29.356654719467343,
+    "wmape": 24.417408342230928,
+    "wmape_macro": 22.769636271266766,
+    "wql": 0.19285487196303785,
+    "wql_macro": 0.17964019319859711,
+    "per_quantile_wql": {
+      "0.1": 0.11347618121472329,
+      "0.2": 0.1803201987200692,
+      "0.3": 0.22129630333577777,
+      "0.4": 0.24034861722531117,
+      "0.5": 0.24417408342230926,
+      "0.6": 0.234973699076399,
+      "0.7": 0.21260330975306568,
+      "0.8": 0.17494978839323722,
+      "0.9": 0.11355166652644794
+    },
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "n_series": 7,
+    "n_rows": 56,
+    "horizon": 96,
+    "per_series": {
+      "HUFL": {
+        "mase": 1.0965342021734044,
+        "smape": 54.22423752931999,
+        "wmape": 31.5723187907586,
+        "wql": 0.24707164358641545,
+        "n_windows": 8
+      },
+      "HULL": {
+        "mase": 0.9180911797038964,
+        "smape": 20.379538319486194,
+        "wmape": 18.885492970207242,
+        "wql": 0.14586950443039418,
+        "n_windows": 8
+      },
+      "MUFL": {
+        "mase": 1.1347346078049698,
+        "smape": 53.2001239046002,
+        "wmape": 38.11969211011308,
+        "wql": 0.2975672146991059,
+        "n_windows": 8
+      },
+      "MULL": {
+        "mase": 0.8348817221099143,
+        "smape": 32.6774744897567,
+        "wmape": 27.464192784717696,
+        "wql": 0.21362043705599632,
+        "n_windows": 8
+      },
+      "LUFL": {
+        "mase": 0.8871687389982554,
+        "smape": 16.100748556840255,
+        "wmape": 15.472733167590347,
+        "wql": 0.12612620234358862,
+        "n_windows": 8
+      },
+      "LULL": {
+        "mase": 0.8900855877445344,
+        "smape": 15.470225813829302,
+        "wmape": 14.82674160507872,
+        "wql": 0.11857000843965741,
+        "n_windows": 8
+      },
+      "OT": {
+        "mase": 0.5728989382653191,
+        "smape": 13.444234422438756,
+        "wmape": 13.046282470401676,
+        "wql": 0.10865634183502176,
+        "n_windows": 8
+      }
+    }
+  },
+  "resources": {
+    "phases": [
+      {
+        "label": "load_data",
+        "seconds": 0.11777114100004837,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 678801408,
+        "device": null
+      },
+      {
+        "label": "load_model",
+        "seconds": 7.607553899999402,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 1958481920,
+        "device": null
+      },
+      {
+        "label": "predict_test",
+        "seconds": 0.7956165619998501,
+        "peak_gpu_bytes": 1057120768,
+        "peak_host_rss_bytes": 1958481920,
+        "device": "cuda"
+      }
+    ],
+    "total_seconds": 8.5209416029993,
+    "peak_gpu_bytes": 1057120768,
+    "peak_host_rss_bytes": 1958481920
+  },
+  "environment": {
+    "python": "3.12.13",
+    "packages": {
+      "tsfm-peft": "0.1.0.dev0",
+      "numpy": "2.0.2",
+      "torch": "2.10.0+cu128",
+      "transformers": "5.17.0",
+      "peft": "0.19.1",
+      "accelerate": "1.13.0",
+      "safetensors": "0.8.0",
+      "pydantic": "2.12.3"
+    },
+    "hardware": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "cuda_available": true,
+      "devices": [
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        },
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        }
+      ],
+      "cuda_version": "12.8"
+    },
+    "git": {
+      "commit": "bd322e40e1cbabf0a5604537ab0eafc64c9a1ca8",
+      "dirty": false
+    }
+  }
+}
