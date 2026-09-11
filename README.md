@@ -12,30 +12,44 @@ protocol you can read in one sitting and reproduce with one command.
 
 ### etth1
 
-Test windows: horizon 96, context 512, 8 rolling origins per series.
+Test windows: horizon 96, context 512, 8 rolling origins per series, 7 series, 56 forecast windows.
 
 | Arm | MASE | sMAPE | wMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r4 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r8 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| Seasonal naive | 1.074 | 33.574 | 29.823 | 0.253 | 0.230 | n/a | n/a | n/a |
+| TimesFM 2.5 zero-shot | 0.905 | 29.357 | 24.417 | 0.193 | 0.180 | 0 | 1.06 GB | n/a |
+| TimesFM 2.5 + LoRA r4 | 0.930 | 30.576 | 24.784 | 0.196 | 0.186 | 1.23M (0.53%) | 1.40 GB | 7m 46s |
+| TimesFM 2.5 + LoRA r8 | 0.911 | 29.999 | 24.569 | 0.194 | 0.182 | 2.46M (1.05%) | 1.42 GB | 7m 04s |
+| TimesFM 2.5 + LoRA r16 | 0.910 | 30.004 | 24.242 | 0.192 | 0.182 | 4.92M (2.08%) | 1.45 GB | 8m 07s |
+| TimesFM 2.5 + LoRA r32 | 0.886 | 29.189 | 24.019 | 0.189 | 0.176 | 9.83M (4.08%) | 1.51 GB | 4m 36s |
+| TimesFM 2.5 + DoRA r16 | 0.917 | 30.262 | 24.365 | 0.193 | 0.184 | 5.07M (2.14%) | 1.78 GB | 11m 33s |
 
 ### nn5_daily
 
-Test windows: horizon 56, context 256, 3 rolling origins per series.
+Test windows: horizon 56, context 256, 3 rolling origins per series, 111 series, 333 forecast windows.
 
 | Arm | MASE | sMAPE | wMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| Seasonal naive | 1.243 | 30.127 | 26.520 | 0.236 | 0.242 | n/a | n/a | n/a |
+| TimesFM 2.5 zero-shot | 0.806 | 20.000 | 17.337 | 0.141 | 0.143 | 0 | 1.01 GB | n/a |
+| TimesFM 2.5 + LoRA r16 | 0.821 | 20.322 | 17.639 | 0.143 | 0.145 | 4.92M (2.08%) | 1.25 GB | 1m 55s |
+| TimesFM 2.5 + DoRA r16 | 0.821 | 20.325 | 17.642 | 0.143 | 0.145 | 5.07M (2.14%) | 1.43 GB | 2m 43s |
 
-- `--` marks an arm whose config exists but has not been run yet.
+### Aggregate
+
+Unweighted mean over 2 datasets (etth1, nn5_daily), for arms scored on all of them.
+
+| Arm | MASE | sMAPE | wMAPE (macro) | WQL (macro) |
+|---|---:|---:|---:|---:|
+| Seasonal naive | 1.159 | 31.851 | 27.245 | 0.236 |
+| TimesFM 2.5 zero-shot | 0.855 | 24.678 | 20.153 | 0.161 |
+| TimesFM 2.5 + LoRA r16 | 0.865 | 25.163 | 20.423 | 0.164 |
+| TimesFM 2.5 + DoRA r16 | 0.869 | 25.293 | 20.511 | 0.165 |
+
+- Produced at commit `bd322e40e1cb`.
+- At least one row was produced from a dirty working tree and cannot be tied to a commit.
+- Hardware: Tesla T4, Tesla T4.
+- Ran on a kernel with no deterministic implementation, so these rows reproduce only to within floating-point accumulation order, not bit-exactly: `etth1-timesfm-dora`, `etth1-timesfm-lora`, `etth1-timesfm-lora-r32`, `etth1-timesfm-lora-r4`, `etth1-timesfm-lora-r8`, `nn5_daily-timesfm-dora`, `nn5_daily-timesfm-lora`. The artifact names the kernel.
 
 <!-- END RESULTS TABLE -->
 
