@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from tsfm_peft.runtime import (
+    DETERMINISTIC_SDP_BACKENDS,
     ResourceLog,
     ResourceUsage,
     collect_environment,
@@ -55,6 +56,52 @@ class TestSetSeed:
         import json
 
         json.dumps(set_seed(3))
+
+
+class TestDeterministicAttention:
+    # The fused attention kernels have no deterministic backward, and under warn_only=True
+    # they are what a GPU fine-tuning run silently falls back to. Turning them off is the
+    # difference between a run that reports non-determinism and one that does not have it.
+
+    @pytest.fixture(autouse=True)
+    def _restore_backends(self):
+        """SDPA backend selection is process-global; put it back for the other tests."""
+        torch = pytest.importorskip("torch")
+        backends = torch.backends.cuda
+        before = {
+            name: getattr(backends, f"{name}_sdp_enabled")()
+            for name, _ in DETERMINISTIC_SDP_BACKENDS
+            if hasattr(backends, f"{name}_sdp_enabled")
+        }
+        yield
+        for name, value in before.items():
+            getattr(backends, f"enable_{name}_sdp")(value)
+
+    def test_leaves_only_the_math_backend_enabled(self):
+        record = set_seed(0, deterministic=True)
+        assert record["attention_backends"]["math"] is True
+        assert not any(
+            enabled for name, enabled in record["attention_backends"].items() if name != "math"
+        )
+
+    def test_takes_effect_on_the_torch_globals_not_just_the_record(self):
+        torch = pytest.importorskip("torch")
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        set_seed(0, deterministic=True)
+        assert torch.backends.cuda.mem_efficient_sdp_enabled() is False
+
+    def test_a_non_deterministic_run_is_left_alone(self):
+        torch = pytest.importorskip("torch")
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        record = set_seed(0, deterministic=False)
+        assert "attention_backends" not in record
+        assert torch.backends.cuda.mem_efficient_sdp_enabled() is True
+
+    def test_attention_still_computes_with_the_fused_kernels_off(self):
+        torch = pytest.importorskip("torch")
+        set_seed(0, deterministic=True)
+        q = torch.randn(2, 4, 16, 32)
+        assert torch.nn.functional.scaled_dot_product_attention(q, q, q).shape == q.shape
 
 
 class TestWatchNondeterminism:
