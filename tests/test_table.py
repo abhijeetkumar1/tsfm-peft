@@ -58,6 +58,7 @@ def make_artifact(
     commit="abc123def456789",
     dirty=False,
     devices=(),
+    concurrent_runs=None,
     seed=0,
     n_series=7,
     total_observations=121_940,
@@ -116,6 +117,11 @@ def make_artifact(
         "environment": {
             "git": {"commit": commit, "dirty": dirty},
             "hardware": {"devices": [{"name": d} for d in devices]},
+            **(
+                {}
+                if concurrent_runs is None
+                else {"scheduling": {"concurrent_runs": concurrent_runs}}
+            ),
         },
     }
 
@@ -441,6 +447,34 @@ class TestWmapeColumn:
         )
         aggregate = render(rows).split("### Aggregate")[1]
         assert MISSING in aggregate
+
+
+class TestContentionNotes:
+    def notes(self, artifacts):
+        """The bullet list rendered under the table."""
+        return [
+            line for line in render(collect_rows(artifacts)).splitlines() if line.startswith("- ")
+        ]
+
+    def test_names_the_rows_that_shared_the_machine(self):
+        notes = self.notes(
+            [
+                make_artifact(name="etth1-timesfm-lora", concurrent_runs=2),
+                make_artifact(name="etth1-timesfm-dora", concurrent_runs=1),
+            ]
+        )
+        (note,) = [n for n in notes if "shared the machine" in n]
+        assert "`etth1-timesfm-lora`" in note
+        assert "`etth1-timesfm-dora`" not in note
+
+    def test_silent_when_every_row_had_the_host_to_itself(self):
+        notes = self.notes([make_artifact(concurrent_runs=1)])
+        assert not any("shared the machine" in n for n in notes)
+
+    def test_silent_for_artifacts_written_before_the_field(self):
+        # An unrecorded run is not evidence of an uncontended one, but it is not evidence of
+        # contention either, and a note has to be about something the artifact actually says.
+        assert not any("shared the machine" in n for n in self.notes([make_artifact()]))
 
 
 class TestProvenanceNotes:

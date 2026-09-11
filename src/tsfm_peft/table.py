@@ -539,6 +539,20 @@ def _provenance_notes(rows: Sequence[Row]) -> list[str]:
     if len(seeds) > 1:
         notes.append(f"Rows used different seeds ({', '.join(str(s) for s in sorted(seeds))}).")
 
+    def concurrency(artifact: dict[str, Any]) -> int | None:
+        """How many arms shared the host for this run, or ``None`` if it was not recorded."""
+        return (artifact["environment"].get("scheduling") or {}).get("concurrent_runs")
+
+    shared = sorted(
+        row.experiment for row in scored if row.artifact and (concurrency(row.artifact) or 1) > 1
+    )
+    if shared:
+        notes.append(
+            "Produced while other arms shared the machine, so their train-time and peak-memory "
+            "figures include contention and are not comparable with rows that had the host to "
+            f"themselves: {', '.join(f'`{name}`' for name in shared)}."
+        )
+
     # ``.get`` because artifacts written before this was recorded have no such key, and an
     # absent record is not evidence of a deterministic run -- it is no evidence either way.
     fallback = sorted(
