@@ -17,7 +17,12 @@ from tsfm_peft.data.windows import BacktestSplit
 from tsfm_peft.evaluate import EvaluationResult, evaluate_model
 from tsfm_peft.models.base import ForecastModel
 from tsfm_peft.results import adapter_path, artifact_path, build_artifact, write_artifact
-from tsfm_peft.runtime import ResourceLog, collect_environment, set_seed
+from tsfm_peft.runtime import (
+    ResourceLog,
+    collect_environment,
+    set_seed,
+    watch_nondeterminism,
+)
 from tsfm_peft.training import TrainingRecord, train_model
 
 
@@ -65,40 +70,48 @@ def run_experiment(
     resources = ResourceLog()
     seed_record = set_seed(config.seed, deterministic=config.deterministic)
 
-    with resources.phase("load_data"):
-        split = config.data.build_split(force_download=force_download)
+    # Spans everything that touches a kernel, so a fallback in either training or inference
+    # is recorded. Reading it afterwards is what turns "we asked for determinism" into
+    # "here is where we did not get it".
+    with watch_nondeterminism() as nondeterministic_kernels:
+        with resources.phase("load_data"):
+            split = config.data.build_split(force_download=force_download)
 
-    with resources.phase("load_model"):
-        model = config.model.build()
+        with resources.phase("load_model"):
+            model = config.model.build()
 
-    training = None
-    if config.training is not None:
-        # LEAKAGE BOUNDARY: train_model reads split.train and the validation windows. The
-        # test windows are scored below, after the selected checkpoint has been restored,
-        # and nothing in this function hands them to the trainer.
-        device = getattr(model, "device", None)
-        with resources.phase("train", device=device):
-            training = train_model(
-                model,
-                split,
-                config.training,
-                seed=config.seed,
-                adapter_dir=(
-                    adapter_path(config.name, results_dir)
-                    if write and config.training.save_adapter
-                    else None
-                ),
-            )
+        training = None
+        if config.training is not None:
+            # LEAKAGE BOUNDARY: train_model reads split.train and the validation windows.
+            # The test windows are scored below, after the selected checkpoint has been
+            # restored, and nothing in this function hands them to the trainer.
+            device = getattr(model, "device", None)
+            with resources.phase("train", device=device):
+                training = train_model(
+                    model,
+                    split,
+                    config.training,
+                    seed=config.seed,
+                    adapter_dir=(
+                        adapter_path(config.name, results_dir)
+                        if write and config.training.save_adapter
+                        else None
+                    ),
+                )
 
-    result = evaluate_model(
-        model,
-        split,
-        window_set="test",
-        # The scaler is a property of the data config, but only an adapter that asks for
-        # external scaling receives it; evaluate_model raises if the two disagree.
-        scaler_kind=config.data.scaler if model.requires_external_scaling else None,
-        resources=resources,
-    )
+        result = evaluate_model(
+            model,
+            split,
+            window_set="test",
+            # The scaler is a property of the data config, but only an adapter that asks for
+            # external scaling receives it; evaluate_model raises if the two disagree.
+            scaler_kind=config.data.scaler if model.requires_external_scaling else None,
+            resources=resources,
+        )
+
+    # Empty means every op had a deterministic implementation, so the run is bit-reproducible
+    # on this machine. Non-empty names the ops that were not, and the table says so.
+    seed_record["nondeterministic_kernels"] = list(nondeterministic_kernels)
 
     artifact = build_artifact(
         config,
@@ -168,6 +181,8 @@ def summarise(outcome: RunOutcome) -> str:
             else "final loss      n/a",
             f"selected        {selected}" + ("  [early stopped]" if record.early_stopped else ""),
         ]
+    if outcome.artifact["seed"].get("nondeterministic_kernels"):
+        lines.append("determinism     a kernel fell back; reproducible but not bit-exact")
     if outcome.path is not None:
         lines.append(f"artifact        {outcome.path}")
     if outcome.training is not None and outcome.training.adapter_path:

@@ -167,6 +167,9 @@ class TestRunExperiment:
     def test_artifact_carries_the_reproduction_provenance(self, tmp_path):
         artifact = run_experiment(load_experiment(SMOKE_CONFIG), results_dir=tmp_path).artifact
         assert artifact["seed"]["seed"] == 0
+        # Present and empty on this CPU arm: every kernel it used had a deterministic
+        # implementation, which is a different statement from having not looked.
+        assert artifact["seed"]["nondeterministic_kernels"] == []
         assert artifact["config"]["data"]["protocol"]["horizon"] == 24
         assert artifact["environment"]["packages"]["numpy"]
         assert "platform" in artifact["environment"]["hardware"]

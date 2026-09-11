@@ -529,6 +529,20 @@ def _provenance_notes(rows: Sequence[Row]) -> list[str]:
     if len(seeds) > 1:
         notes.append(f"Rows used different seeds ({', '.join(str(s) for s in sorted(seeds))}).")
 
+    # ``.get`` because artifacts written before this was recorded have no such key, and an
+    # absent record is not evidence of a deterministic run -- it is no evidence either way.
+    fallback = sorted(
+        row.experiment
+        for row in scored
+        if row.artifact and row.artifact["seed"].get("nondeterministic_kernels")
+    )
+    if fallback:
+        notes.append(
+            "Ran on a kernel with no deterministic implementation, so these rows reproduce "
+            "only to within floating-point accumulation order, not bit-exactly: "
+            f"{', '.join(f'`{name}`' for name in fallback)}. The artifact names the kernel."
+        )
+
     return notes
 
 

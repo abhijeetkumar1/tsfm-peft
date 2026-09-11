@@ -134,8 +134,14 @@ validation MASE with early stopping; only the adapter is saved.
 
 **Determinism.** Every run seeds Python, NumPy and torch, selects deterministic kernels, and
 records the seed, the package versions, the git commit and the hardware into its artifact.
-The same config on the same machine gives the same numbers. Wall-clock and memory figures
-are only comparable within one machine and one dtype.
+Deterministic kernels are requested with `warn_only=True`, so an op that has no deterministic
+implementation falls back instead of failing the run -- on GPU that means attention's backward
+pass, which every fine-tuned arm goes through. So the baseline and zero-shot arms reproduce
+bit-exactly on the same machine, while the LoRA and DoRA arms reproduce to within
+floating-point accumulation order: the last digits of a metric can move between runs. Where
+that happened the run records the kernel in its artifact under `seed.nondeterministic_kernels`
+and the table says so underneath. Wall-clock and memory figures are only comparable within one
+machine and one dtype.
 
 **Artifacts.** Every run writes one JSON file holding the full config, the seed record, the
 dataset and protocol provenance, the metrics with a per-series breakdown, the training

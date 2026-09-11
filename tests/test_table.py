@@ -430,6 +430,23 @@ class TestProvenanceNotes:
         notes = self.notes([make_artifact(name="a", seed=0), make_artifact(name="b", seed=1)])
         assert any("different seeds" in note for note in notes)
 
+    def test_notes_which_rows_were_not_bit_exact(self):
+        loose = make_artifact(name="etth1-timesfm-lora", trained=True)
+        loose["seed"]["nondeterministic_kernels"] = ["attention used a non-deterministic algo"]
+        notes = self.notes([make_artifact(name="etth1-timesfm-zeroshot"), loose])
+        (note,) = [n for n in notes if "bit-exactly" in n]
+        assert "`etth1-timesfm-lora`" in note
+        assert "`etth1-timesfm-zeroshot`" not in note
+
+    def test_says_nothing_when_every_kernel_was_deterministic(self):
+        artifact = make_artifact()
+        artifact["seed"]["nondeterministic_kernels"] = []
+        assert not any("bit-exactly" in note for note in self.notes([artifact]))
+
+    def test_says_nothing_for_artifacts_written_before_it_was_recorded(self):
+        # No key at all: absence of a record is not a record of absence, so claim nothing.
+        assert not any("bit-exactly" in note for note in self.notes([make_artifact()]))
+
 
 class TestReadmeInjection:
     def readme(self, body="old table"):
