@@ -170,14 +170,23 @@ validation MASE with early stopping; only the adapter is saved.
 
 **Determinism.** Every run seeds Python, NumPy and torch, selects deterministic kernels, and
 records the seed, the package versions, the git commit and the hardware into its artifact.
-Deterministic kernels are requested with `warn_only=True`, so an op that has no deterministic
-implementation falls back instead of failing the run -- on GPU that means attention's backward
-pass, which every fine-tuned arm goes through. So the baseline and zero-shot arms reproduce
-bit-exactly on the same machine, while the LoRA and DoRA arms reproduce to within
-floating-point accumulation order: the last digits of a metric can move between runs. Where
-that happened the run records the kernel in its artifact under `seed.nondeterministic_kernels`
-and the table says so underneath. Wall-clock and memory figures are only comparable within one
-machine and one dtype.
+Deterministic kernels are requested with `warn_only=True` — a benchmark that refuses to run
+measures nothing — so a fallback is silent by design. Rather than trust that, each run
+collects the warnings torch emits when one happens into `seed.nondeterministic_kernels`, and
+the table names any row that has them: the claim is one the artifacts can contradict.
+
+The one fallback that did happen is closed at the source. Attention's backward pass has no
+deterministic implementation in the flash, memory-efficient or cuDNN kernels, so a
+deterministic run restricts scaled-dot-product attention to the math backend, which does.
+The usual objection — that materialising the attention matrix costs memory — does not apply
+at this size: TimesFM 2.5 has `patch_length` 32, so a 512-step context is 16 tokens and the
+matrix is 16×16 per head.
+
+**The eleven rows in the table above predate that change** and were produced with the fused
+kernels, which is why the notes under the table name the seven fine-tuned arms as reproducing
+only to within floating-point accumulation order. Runs from this commit onward should record
+no fallback at all; if one ever does, the artifact and the table will say so. Wall-clock and
+memory figures are only comparable within one machine and one dtype.
 
 **Artifacts.** Every run writes one JSON file holding the full config, the seed record, the
 dataset and protocol provenance, the metrics with a per-series breakdown, the training
