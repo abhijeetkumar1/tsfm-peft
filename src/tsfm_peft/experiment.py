@@ -23,6 +23,7 @@ from tsfm_peft.runtime import (
     set_seed,
     watch_nondeterminism,
 )
+from tsfm_peft.training import TrainingRecord, train_model
 
 
 @dataclass(frozen=True)
