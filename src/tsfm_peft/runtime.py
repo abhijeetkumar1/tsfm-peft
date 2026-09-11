@@ -10,12 +10,15 @@ autotuner and picks deterministic kernels, which is typically a few percent slow
 wall-clock number is one of the things being reported, the flag is recorded in the artifact
 so a timing is never compared against one taken under different settings.
 
-Determinism also has a limit worth being explicit about. It is requested with
-``warn_only=True``, so an op with no deterministic implementation warns and falls back
-instead of failing the run -- which is the right trade (a benchmark that refuses to run
-measures nothing) but means "deterministic" is not the same as "bit-exact". The fallback is
-observable only as a warning, so :func:`watch_nondeterminism` collects those warnings and the
-run records them in its artifact next to the seed.
+Determinism is still requested with ``warn_only=True``, because a benchmark that refuses to
+run measures nothing. That makes a fallback silent by design, so :func:`watch_nondeterminism`
+collects the warnings torch emits when one happens and the run records them in its artifact
+next to the seed: "deterministic" is then a claim the artifact either supports or contradicts,
+rather than one the code asserts about itself.
+
+The fallback that actually happened here was attention's backward pass, so
+:func:`_deterministic_attention` removes it at the source by restricting scaled-dot-product
+attention to the one backend whose backward is deterministic.
 """
 
 from __future__ import annotations
@@ -69,12 +72,56 @@ def _torch() -> Any | None:
     return torch
 
 
+#: SDPA backends and whether a deterministic run may use each. Flash, memory-efficient and
+#: cuDNN attention have no deterministic backward; the math backend does.
+DETERMINISTIC_SDP_BACKENDS: tuple[tuple[str, bool], ...] = (
+    ("flash", False),
+    ("mem_efficient", False),
+    ("cudnn", False),
+    ("math", True),
+)
+
+
+def _deterministic_attention(torch: Any) -> dict[str, bool]:
+    """Restrict scaled-dot-product attention to a backend with a deterministic backward.
+
+    The fused kernels exist to avoid materialising the attention matrix, and they pay for it
+    with a backward pass that accumulates in a non-deterministic order. Under
+    ``warn_only=True`` that is exactly what a GPU fine-tuning run silently falls back to.
+
+    The trade is usually real and here it is not: TimesFM 2.5 has ``patch_length`` 32, so a
+    512-step context is 16 tokens and the quadratic attention matrix the math backend
+    materialises is 16x16 per head. There is no memory worth saving at that size, and the
+    determinism is worth having.
+
+    Args:
+        torch: The imported torch module.
+
+    Returns:
+        Which backends are enabled afterwards, for the artifact. Absent from the mapping
+        means this build of torch does not expose that backend at all.
+    """
+    backends = torch.backends.cuda
+    for name, wanted in DETERMINISTIC_SDP_BACKENDS:
+        toggle = getattr(backends, f"enable_{name}_sdp", None)
+        if toggle is not None:
+            toggle(wanted)
+
+    enabled: dict[str, bool] = {}
+    for name, _ in DETERMINISTIC_SDP_BACKENDS:
+        query = getattr(backends, f"{name}_sdp_enabled", None)
+        if query is not None:
+            enabled[name] = bool(query())
+    return enabled
+
+
 def set_seed(seed: int, *, deterministic: bool = True) -> dict[str, Any]:
     """Seed every RNG the pipeline touches and optionally force deterministic kernels.
 
     Args:
         seed: The seed. Recorded in the artifact; changing it is a different experiment.
-        deterministic: Select deterministic algorithms and disable cuDNN autotuning.
+        deterministic: Select deterministic algorithms, disable cuDNN autotuning, and
+            restrict attention to a backend with a deterministic backward pass.
             ``warn_only`` is used so an op with no deterministic implementation degrades to
             a warning rather than aborting a long run -- the warning is the signal that a
             specific op, not the whole run, is non-reproducible.
@@ -111,6 +158,7 @@ def set_seed(seed: int, *, deterministic: bool = True) -> dict[str, Any]:
         torch.use_deterministic_algorithms(True, warn_only=True)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+        record["attention_backends"] = _deterministic_attention(torch)
     record["cublas_workspace_config"] = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
     return record
 

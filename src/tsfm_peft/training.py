@@ -9,13 +9,14 @@ What this module is careful about, in order of how expensive the mistake would b
 * **Selection is on the reported metric.** The checkpoint kept is the one with the best
   validation MASE, not the best validation loss. Selecting on one number and publishing
   another lets the two disagree about which step was best, and the published one loses.
-* **Everything it controls is deterministic.** Batch order comes from a seeded generator,
-  so two runs of the same config see the same windows in the same order, and every knob that
-  could change the result is in the config and lands in the artifact. What it does not
-  control is the kernels: on GPU, attention's backward pass has no deterministic
-  implementation, so gradients differ in their last bits between runs and the training
-  trajectory diverges slowly. Runs reproduce to within that, not bit-exactly, and
-  :func:`~tsfm_peft.runtime.watch_nondeterminism` records when it happened.
+* **It is deterministic, and says so only because it is checked.** Batch order comes from a
+  seeded generator, so two runs of the same config see the same windows in the same order,
+  and every knob that could change the result is in the config and lands in the artifact.
+  The kernels are handled a level up: :func:`~tsfm_peft.runtime.set_seed` restricts attention
+  to a backend whose backward pass is deterministic, because the fused ones are not and the
+  gradients they produce differ in their last bits between runs. Anything that still falls
+  back is recorded by :func:`~tsfm_peft.runtime.watch_nondeterminism` and named under the
+  results table.
 * **It reports cost, not just accuracy.** Steps, wall clock and peak memory are recorded
   alongside the trainable-parameter count, because a PEFT result that only reports accuracy
   is not reporting the thing the method is for.
