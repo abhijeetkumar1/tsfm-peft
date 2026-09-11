@@ -1,0 +1,685 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-09-11T15:41:02+00:00",
+  "experiment": {
+    "name": "etth1-timesfm-lora-r64",
+    "notes": "Rank ablation row, rank 64. Compare against the other -r rows and against etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep."
+  },
+  "config": {
+    "name": "etth1-timesfm-lora-r64",
+    "data": {
+      "dataset": "etth1",
+      "protocol": {
+        "horizon": 96,
+        "context_length": 512,
+        "n_test_windows": 8,
+        "n_val_windows": 2,
+        "stride": null
+      },
+      "scaler": "standard"
+    },
+    "model": {
+      "name": "timesfm_2p5",
+      "options": {
+        "checkpoint": "google/timesfm-2.5-200m-transformers",
+        "revision": null,
+        "device": "auto",
+        "dtype": "float32",
+        "batch_size": 32,
+        "clamp_negative": "per_series",
+        "peft": {
+          "method": "lora",
+          "rank": 64,
+          "alpha": 128,
+          "dropout": 0.0,
+          "target_modules": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      }
+    },
+    "training": {
+      "max_steps": 1000,
+      "batch_size": 8,
+      "gradient_accumulation_steps": 1,
+      "learning_rate": 0.0001,
+      "weight_decay": 0.0,
+      "warmup_steps": 50,
+      "schedule": "cosine",
+      "grad_clip": 1.0,
+      "train_stride": null,
+      "max_windows_per_series": null,
+      "eval_every": 100,
+      "patience": 3,
+      "selection_metric": "mase",
+      "log_every": 10,
+      "save_adapter": true,
+      "seed_offset": 0
+    },
+    "seed": 0,
+    "deterministic": true,
+    "notes": "Rank ablation row, rank 64. Compare against the other -r rows and against etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep."
+  },
+  "seed": {
+    "seed": 0,
+    "deterministic": true,
+    "python_hash_seed": null,
+    "torch_seeded": true,
+    "attention_backends": {
+      "flash": false,
+      "mem_efficient": false,
+      "cudnn": false,
+      "math": true
+    },
+    "cublas_workspace_config": ":4096:8",
+    "nondeterministic_kernels": []
+  },
+  "data": {
+    "dataset": {
+      "name": "etth1",
+      "freq": "h",
+      "seasonality": 24,
+      "n_series": 7,
+      "min_length": 17420,
+      "max_length": 17420,
+      "total_observations": 121940,
+      "license": "CC-BY-ND-4.0",
+      "source_url": "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv",
+      "description": "Electricity Transformer Temperature, hourly, 7 channels treated as independent univariate series."
+    },
+    "protocol": {
+      "horizon": 96,
+      "context_length": 512,
+      "n_test_windows": 8,
+      "n_val_windows": 2,
+      "stride": null
+    },
+    "effective_stride": 96,
+    "n_val_windows_total": 14,
+    "n_test_windows_total": 56,
+    "fit_end": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    },
+    "train_lengths": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    }
+  },
+  "model": {
+    "name": "timesfm_2p5",
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "max_horizon": 128,
+    "batch_size": 32,
+    "requires_external_scaling": false,
+    "total_parameters": 250950080,
+    "trainable_parameters": 19660800,
+    "frozen_parameters": 231289280,
+    "trainable_pct": 7.834546217319397,
+    "checkpoint": "google/timesfm-2.5-200m-transformers",
+    "revision": null,
+    "device": "cuda",
+    "dtype": "float32",
+    "clamp_negative": "per_series",
+    "force_flip_invariance": null,
+    "model_horizon": 128,
+    "patch_length": 32,
+    "median_head_index": 5,
+    "peft": {
+      "method": "lora",
+      "rank": 64,
+      "alpha": 128.0,
+      "scaling": 2.0,
+      "dropout": 0.0,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "fc1",
+        "fc2"
+      ],
+      "modules_to_save": [],
+      "bias": "none"
+    }
+  },
+  "training": {
+    "n_train_windows": 1162,
+    "steps": 600,
+    "epochs": 4.110154905335628,
+    "final_loss": 0.45481787621974945,
+    "loss_curve": [
+      {
+        "step": 10,
+        "loss": 1.0122719824314117,
+        "lr": 2.2000000000000003e-05
+      },
+      {
+        "step": 20,
+        "loss": 1.1438980579376221,
+        "lr": 4.2e-05
+      },
+      {
+        "step": 30,
+        "loss": 1.3529183864593506,
+        "lr": 6.2e-05
+      },
+      {
+        "step": 40,
+        "loss": 1.3619223415851593,
+        "lr": 8.2e-05
+      },
+      {
+        "step": 50,
+        "loss": 0.8512601226568222,
+        "lr": 0.0001
+      },
+      {
+        "step": 60,
+        "loss": 1.204901647567749,
+        "lr": 9.997266286704631e-05
+      },
+      {
+        "step": 70,
+        "loss": 1.8756331622600555,
+        "lr": 9.989068136093873e-05
+      },
+      {
+        "step": 80,
+        "loss": 1.092661166191101,
+        "lr": 9.975414512725057e-05
+      },
+      {
+        "step": 90,
+        "loss": 0.9872536838054657,
+        "lr": 9.956320346634876e-05
+      },
+      {
+        "step": 100,
+        "loss": 1.1244217813014985,
+        "lr": 9.931806517013612e-05
+      },
+      {
+        "step": 110,
+        "loss": 1.0883315801620483,
+        "lr": 9.901899829374047e-05
+      },
+      {
+        "step": 120,
+        "loss": 1.1835072875022887,
+        "lr": 9.86663298624003e-05
+      },
+      {
+        "step": 130,
+        "loss": 0.7949717342853546,
+        "lr": 9.826044551386744e-05
+      },
+      {
+        "step": 140,
+        "loss": 0.9232239127159119,
+        "lr": 9.780178907671789e-05
+      },
+      {
+        "step": 150,
+        "loss": 1.014588052034378,
+        "lr": 9.729086208503174e-05
+      },
+      {
+        "step": 160,
+        "loss": 0.8324949383735657,
+        "lr": 9.672822322997305e-05
+      },
+      {
+        "step": 170,
+        "loss": 0.9131907999515534,
+        "lr": 9.611448774886924e-05
+      },
+      {
+        "step": 180,
+        "loss": 0.8631182372570038,
+        "lr": 9.545032675245813e-05
+      },
+      {
+        "step": 190,
+        "loss": 0.8172511398792267,
+        "lr": 9.473646649103818e-05
+      },
+      {
+        "step": 200,
+        "loss": 0.9444268137216568,
+        "lr": 9.397368756032445e-05
+      },
+      {
+        "step": 210,
+        "loss": 0.9964741826057434,
+        "lr": 9.316282404787871e-05
+      },
+      {
+        "step": 220,
+        "loss": 0.8389421761035919,
+        "lr": 9.230476262104677e-05
+      },
+      {
+        "step": 230,
+        "loss": 0.7942040205001831,
+        "lr": 9.140044155740101e-05
+      },
+      {
+        "step": 240,
+        "loss": 1.0287997007369996,
+        "lr": 9.045084971874738e-05
+      },
+      {
+        "step": 250,
+        "loss": 0.7871526181697845,
+        "lr": 8.945702546981969e-05
+      },
+      {
+        "step": 260,
+        "loss": 0.8371756196022033,
+        "lr": 8.842005554284296e-05
+      },
+      {
+        "step": 270,
+        "loss": 0.9946817576885223,
+        "lr": 8.73410738492077e-05
+      },
+      {
+        "step": 280,
+        "loss": 1.7132460057735444,
+        "lr": 8.622126023955446e-05
+      },
+      {
+        "step": 290,
+        "loss": 0.8971360296010971,
+        "lr": 8.506183921362443e-05
+      },
+      {
+        "step": 300,
+        "loss": 0.7890397369861603,
+        "lr": 8.386407858128706e-05
+      },
+      {
+        "step": 310,
+        "loss": 0.7118809640407562,
+        "lr": 8.262928807620843e-05
+      },
+      {
+        "step": 320,
+        "loss": 0.8808249235153198,
+        "lr": 8.135881792367686e-05
+      },
+      {
+        "step": 330,
+        "loss": 0.7510947346687317,
+        "lr": 8.005405736415126e-05
+      },
+      {
+        "step": 340,
+        "loss": 0.6927620947360993,
+        "lr": 7.871643313414718e-05
+      },
+      {
+        "step": 350,
+        "loss": 0.7712031185626984,
+        "lr": 7.734740790612136e-05
+      },
+      {
+        "step": 360,
+        "loss": 1.0803160130977632,
+        "lr": 7.594847868906076e-05
+      },
+      {
+        "step": 370,
+        "loss": 0.6920671582221984,
+        "lr": 7.452117519152542e-05
+      },
+      {
+        "step": 380,
+        "loss": 0.7390672534704208,
+        "lr": 7.30670581489344e-05
+      },
+      {
+        "step": 390,
+        "loss": 0.6380079329013825,
+        "lr": 7.158771761692464e-05
+      },
+      {
+        "step": 400,
+        "loss": 0.6441143333911896,
+        "lr": 7.008477123264848e-05
+      },
+      {
+        "step": 410,
+        "loss": 0.6403650343418121,
+        "lr": 6.855986244591104e-05
+      },
+      {
+        "step": 420,
+        "loss": 0.6750191241502762,
+        "lr": 6.701465872208216e-05
+      },
+      {
+        "step": 430,
+        "loss": 0.7384510993957519,
+        "lr": 6.545084971874738e-05
+      },
+      {
+        "step": 440,
+        "loss": 0.7639632940292358,
+        "lr": 6.387014543809223e-05
+      },
+      {
+        "step": 450,
+        "loss": 0.5559976935386658,
+        "lr": 6.227427435703997e-05
+      },
+      {
+        "step": 460,
+        "loss": 0.8985871732234955,
+        "lr": 6.066498153718735e-05
+      },
+      {
+        "step": 470,
+        "loss": 0.5410986870527268,
+        "lr": 5.90440267166055e-05
+      },
+      {
+        "step": 480,
+        "loss": 0.5852074235677719,
+        "lr": 5.74131823855921e-05
+      },
+      {
+        "step": 490,
+        "loss": 0.6549748808145524,
+        "lr": 5.577423184847932e-05
+      },
+      {
+        "step": 500,
+        "loss": 0.7261674553155899,
+        "lr": 5.4128967273616625e-05
+      },
+      {
+        "step": 510,
+        "loss": 0.5804756462574006,
+        "lr": 5.247918773366112e-05
+      },
+      {
+        "step": 520,
+        "loss": 0.5778365731239319,
+        "lr": 5.0826697238317935e-05
+      },
+      {
+        "step": 530,
+        "loss": 0.5028446465730667,
+        "lr": 4.917330276168208e-05
+      },
+      {
+        "step": 540,
+        "loss": 0.5377728998661041,
+        "lr": 4.7520812266338885e-05
+      },
+      {
+        "step": 550,
+        "loss": 0.5759087026119232,
+        "lr": 4.5871032726383386e-05
+      },
+      {
+        "step": 560,
+        "loss": 0.6064069151878357,
+        "lr": 4.4225768151520694e-05
+      },
+      {
+        "step": 570,
+        "loss": 0.5980029255151749,
+        "lr": 4.2586817614407895e-05
+      },
+      {
+        "step": 580,
+        "loss": 0.5324338227510452,
+        "lr": 4.095597328339452e-05
+      },
+      {
+        "step": 590,
+        "loss": 0.5282264709472656,
+        "lr": 3.933501846281267e-05
+      },
+      {
+        "step": 600,
+        "loss": 0.45481787621974945,
+        "lr": 3.772572564296005e-05
+      }
+    ],
+    "val_curve": [
+      {
+        "step": 100,
+        "mase": 0.9545074570006304,
+        "smape": 33.212209103279385,
+        "wql": 0.26733364970081475
+      },
+      {
+        "step": 200,
+        "mase": 0.9210069577024064,
+        "smape": 33.465060112899764,
+        "wql": 0.25034090464737024
+      },
+      {
+        "step": 300,
+        "mase": 0.8756261381323707,
+        "smape": 32.25377925761847,
+        "wql": 0.22434888857987018
+      },
+      {
+        "step": 400,
+        "mase": 0.9094713643822654,
+        "smape": 32.70815218440079,
+        "wql": 0.24605533601946916
+      },
+      {
+        "step": 500,
+        "mase": 0.9078678877501439,
+        "smape": 33.36693156657916,
+        "wql": 0.2396701719338055
+      },
+      {
+        "step": 600,
+        "mase": 0.9282466494365949,
+        "smape": 34.67566852882784,
+        "wql": 0.2464147761318263
+      }
+    ],
+    "best_step": 300,
+    "best_metric": 0.8756261381323707,
+    "selection": "best_val",
+    "selection_metric": "mase",
+    "early_stopped": true,
+    "adapter_path": "results/adapters/etth1-timesfm-lora-r64",
+    "total_parameters": 250950080,
+    "trainable_parameters": 19660800,
+    "frozen_parameters": 231289280,
+    "trainable_pct": 7.834546217319397
+  },
+  "results": {
+    "window_set": "test",
+    "scaler_kind": null,
+    "quantile_crossing_rate": 0.0008370535714285714,
+    "mase": 0.9094284328701877,
+    "smape": 30.181475058306205,
+    "wmape": 24.670830424136923,
+    "wmape_macro": 22.957802186867877,
+    "wql": 0.19465712206069452,
+    "wql_macro": 0.18122921659919738,
+    "per_quantile_wql": {
+      "0.1": 0.11344117214058776,
+      "0.2": 0.17608699354723134,
+      "0.3": 0.217054533899473,
+      "0.4": 0.2397998034956168,
+      "0.5": 0.24670830424136922,
+      "0.6": 0.23977922497806795,
+      "0.7": 0.21957888939929854,
+      "0.8": 0.18191879868017402,
+      "0.9": 0.11754637816443192
+    },
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "n_series": 7,
+    "n_rows": 56,
+    "horizon": 96,
+    "per_series": {
+      "HUFL": {
+        "mase": 1.0949690500704587,
+        "smape": 56.350599801103996,
+        "wmape": 31.527253638160282,
+        "wql": 0.24595160893104032,
+        "n_windows": 8
+      },
+      "HULL": {
+        "mase": 0.9311115855449852,
+        "smape": 20.92449174746157,
+        "wmape": 19.15332778707198,
+        "wql": 0.14990397570705963,
+        "n_windows": 8
+      },
+      "MUFL": {
+        "mase": 1.1226689474948457,
+        "smape": 53.66143747050546,
+        "wmape": 37.714364509312354,
+        "wql": 0.28874149790084325,
+        "n_windows": 8
+      },
+      "MULL": {
+        "mase": 0.8758968813344259,
+        "smape": 35.36675511133218,
+        "wmape": 28.81342371193349,
+        "wql": 0.22441864248214438,
+        "n_windows": 8
+      },
+      "LUFL": {
+        "mase": 0.867436969157134,
+        "smape": 15.60666824848093,
+        "wmape": 15.128599750512652,
+        "wql": 0.12288506484894388,
+        "n_windows": 8
+      },
+      "LULL": {
+        "mase": 0.8499047826563764,
+        "smape": 14.758523801321855,
+        "wmape": 14.157423482497077,
+        "wql": 0.11549787632342233,
+        "n_windows": 8
+      },
+      "OT": {
+        "mase": 0.6240108138330875,
+        "smape": 14.60184922793744,
+        "wmape": 14.210222428587311,
+        "wql": 0.121205850000928,
+        "n_windows": 8
+      }
+    }
+  },
+  "resources": {
+    "phases": [
+      {
+        "label": "load_data",
+        "seconds": 0.5565631560000384,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 690192384,
+        "device": null
+      },
+      {
+        "label": "load_model",
+        "seconds": 26.342817079999918,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 2252058624,
+        "device": null
+      },
+      {
+        "label": "train",
+        "seconds": 272.662151169,
+        "peak_gpu_bytes": 1635936256,
+        "peak_host_rss_bytes": 2370785280,
+        "device": "cuda"
+      },
+      {
+        "label": "predict_test",
+        "seconds": 0.3852364280000984,
+        "peak_gpu_bytes": 1247961600,
+        "peak_host_rss_bytes": 2370785280,
+        "device": "cuda"
+      }
+    ],
+    "total_seconds": 299.9467678330001,
+    "peak_gpu_bytes": 1635936256,
+    "peak_host_rss_bytes": 2370785280
+  },
+  "environment": {
+    "python": "3.12.13",
+    "packages": {
+      "tsfm-peft": "0.1.0.dev0",
+      "numpy": "2.0.2",
+      "torch": "2.10.0+cu128",
+      "transformers": "5.17.0",
+      "peft": "0.19.1",
+      "accelerate": "1.13.0",
+      "safetensors": "0.8.0",
+      "pydantic": "2.12.3"
+    },
+    "hardware": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "cuda_available": true,
+      "devices": [
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        }
+      ],
+      "cuda_version": "12.8"
+    },
+    "scheduling": {
+      "concurrent_runs": 1,
+      "visible_devices": "0"
+    },
+    "git": {
+      "commit": "0ec2837df78da51eb1c5a1b2ff431362c47b8ab8",
+      "dirty": false
+    }
+  }
+}
