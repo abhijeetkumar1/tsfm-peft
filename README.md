@@ -66,17 +66,6 @@ uv run tsfm-peft run --check configs/experiments/*.yaml
 uv run tsfm-peft list
 ```
 
-### On a Colab GPU
-
-If you do not have a GPU to hand, `notebooks/colab_run_experiments.ipynb` runs every arm on
-a free Colab T4 and hands back the artifacts:
-[open in Colab](https://colab.research.google.com/github/abhijeetkumar1/tsfm-peft/blob/dev/notebooks/colab_run_experiments.ipynb).
-
-The notebook computes nothing of its own — it clones this repo, installs it, and calls
-`tsfm-peft run` for each config, so the numbers come from the same code path a local run
-uses. It writes artifacts to Google Drive and skips arms that already have one, so a Colab
-disconnect costs you only the arm that was in flight.
-
 ### Docker
 
 There is a Docker image if you would rather not install anything:
