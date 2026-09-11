@@ -24,11 +24,11 @@ EXPERIMENTS = sorted((REPO / "configs" / "experiments").glob("*.yaml"))
 #: Fields a row is allowed to differ in without changing what it measures.
 DESCRIPTIVE = {"name", "notes"}
 
-ABLATION_RANKS = (4, 8, 32, 64, 128)
+ABLATION_RANKS = (32, 64, 128)
 
 #: Every LoRA rank has a DoRA row at the same rank, named with the same suffix. The empty
 #: suffix is rank 16, whose rows are the headline arms and carry no rank in their names.
-PAIRED_SUFFIXES = ("", "-r4", "-r8", "-r32", "-r64", "-r128")
+PAIRED_SUFFIXES = ("", "-r32", "-r64", "-r128")
 
 
 def experiment(stem: str):
@@ -128,7 +128,7 @@ class TestArmsAreComparable:
                 if p.stem.startswith("etth1-timesfm-") and method in p.stem
             }
 
-        assert ranks("lora") == ranks("dora") == {4, 8, 16, 32, 64, 128}
+        assert ranks("lora") == ranks("dora") == {16, 32, 64, 128}
 
     @pytest.mark.parametrize("dataset", ["etth1", "nn5_daily"])
     def test_the_finetuned_arms_match_the_zero_shot_arm_where_it_overlaps(self, dataset):
