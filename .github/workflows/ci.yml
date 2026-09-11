@@ -32,6 +32,12 @@ jobs:
         run: uv run ruff check .
       - name: Format check
         run: uv run ruff format --check .
+      # The README table is generated from the metrics artifacts, never hand-edited. This
+      # is what enforces that: a number typed into the README by hand, or one left stale
+      # after a re-run, fails the build. It needs no artifacts to be present -- with an
+      # empty results directory the expected table is the all-pending one.
+      - name: Results table is current
+        run: uv run tsfm-peft table --configs configs/experiments --check
 
   test:
     name: pytest (py${{ matrix.python-version }})

@@ -91,6 +91,11 @@ ignore = [
 # Test names are the documentation; classes are used purely for grouping.
 "tests/*" = ["D100", "D101", "D102", "D103", "ANN201", "ANN001", "ANN202"]
 "scripts/*" = ["D100"]
+# A notebook is a driver, not library code: its cells are read top to bottom with the prose
+# around them, and requiring annotations would make editing one in Colab trip CI. F811
+# because ruff concatenates the cells, while a cell that has to survive being rerun on its
+# own after a disconnect must repeat its own imports.
+"notebooks/*" = ["ANN", "D100", "D103", "E402", "F811"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
