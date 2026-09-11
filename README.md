@@ -14,26 +14,26 @@ protocol you can read in one sitting and reproduce with one command.
 
 Test windows: horizon 96, context 512, 8 rolling origins per series.
 
-| Arm | MASE | sMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r4 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r8 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| Arm | MASE | sMAPE | wMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r4 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r8 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 
 ### nn5_daily
 
 Test windows: horizon 56, context 256, 3 rolling origins per series.
 
-| Arm | MASE | sMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- |
+| Arm | MASE | sMAPE | wMAPE | WQL | WQL (macro) | Trained params | Peak GPU | Train time |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Seasonal naive *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 zero-shot *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r16 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
 
 - `--` marks an arm whose config exists but has not been run yet.
 
@@ -113,11 +113,14 @@ something else.
 
 **Metrics follow the sources they would be compared against.** MASE per Hyndman & Koehler
 as operationalised by M4, with the in-sample seasonal-naive MAE of the fit region as the
-denominator. sMAPE in the M4 form, bounded in [0, 200]. Weighted quantile loss in the
-GluonTS/Chronos form — pinball loss over the nine deciles, normalised by the total absolute
-magnitude of the targets. Pooled WQL is reported alongside a macro average because for a
-dataset whose series are channels of very different scale (ETTh1) the pooled number is
-effectively a single-channel metric.
+denominator. sMAPE in the M4 form, bounded in [0, 200]. wMAPE as `100 * sum|y - yhat| /
+sum|y|` pooled over every row and step — the weighted form, not a mean of per-row MAPEs, so
+an observation near zero contributes its share of the denominator instead of dividing its own
+error; in percentage points, like sMAPE. Weighted quantile loss in the GluonTS/Chronos form —
+pinball loss over the nine deciles, normalised by the total absolute magnitude of the targets.
+Pooled WQL and pooled wMAPE are each reported alongside a macro average because for a dataset
+whose series are channels of very different scale (ETTh1) the pooled number is effectively a
+single-channel metric.
 
 **Cost is reported next to accuracy, always.** Trained parameter count and share, peak GPU
 memory, and wall-clock training time sit in the same table as MASE, because an accuracy
@@ -134,8 +137,14 @@ validation MASE with early stopping; only the adapter is saved.
 
 **Determinism.** Every run seeds Python, NumPy and torch, selects deterministic kernels, and
 records the seed, the package versions, the git commit and the hardware into its artifact.
-The same config on the same machine gives the same numbers. Wall-clock and memory figures
-are only comparable within one machine and one dtype.
+Deterministic kernels are requested with `warn_only=True`, so an op that has no deterministic
+implementation falls back instead of failing the run -- on GPU that means attention's backward
+pass, which every fine-tuned arm goes through. So the baseline and zero-shot arms reproduce
+bit-exactly on the same machine, while the LoRA and DoRA arms reproduce to within
+floating-point accumulation order: the last digits of a metric can move between runs. Where
+that happened the run records the kernel in its artifact under `seed.nondeterministic_kernels`
+and the table says so underneath. Wall-clock and memory figures are only comparable within one
+machine and one dtype.
 
 **Artifacts.** Every run writes one JSON file holding the full config, the seed record, the
 dataset and protocol provenance, the metrics with a per-series breakdown, the training

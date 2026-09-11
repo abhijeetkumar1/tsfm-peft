@@ -2,6 +2,8 @@
 
 import random
 import sys
+import warnings
+from contextlib import contextmanager
 
 import numpy as np
 import pytest
@@ -16,6 +18,7 @@ from tsfm_peft.runtime import (
     peak_host_memory_bytes,
     set_seed,
     track_resources,
+    watch_nondeterminism,
 )
 
 
@@ -51,6 +54,68 @@ class TestSetSeed:
         import json
 
         json.dumps(set_seed(3))
+
+
+class TestWatchNondeterminism:
+    # The warning these look for is the only signal torch gives that `warn_only=True` let a
+    # non-deterministic kernel through, so the artifact's claim rests on catching it.
+
+    @contextmanager
+    def warned(self, *messages: str):
+        """Emit warnings the way torch's autograd engine does, without escaping the test.
+
+        ``record=True`` swallows the display, which also keeps these fixtures out of
+        pytest's warning summary; the watcher is entered inside it and wraps it.
+        """
+        with warnings.catch_warnings(record=True) as shown:
+            warnings.simplefilter("always")
+            with watch_nondeterminism() as seen:
+                for message in messages:
+                    warnings.warn(message, UserWarning, stacklevel=2)
+                yield seen, shown
+
+    def test_records_a_determinism_fallback(self):
+        with self.warned(
+            "Memory Efficient attention defaults to a non-deterministic algorithm."
+        ) as (seen, _):
+            pass
+        assert len(seen) == 1
+        assert "non-deterministic" in seen[0]
+
+    def test_records_the_upsample_wording_too(self):
+        message = "upsample_bilinear2d_backward does not have a deterministic implementation"
+        with self.warned(message) as (seen, _):
+            pass
+        assert len(seen) == 1
+
+    def test_ignores_unrelated_warnings(self):
+        with self.warned("You are sending unauthenticated requests to the HF Hub.") as (seen, _):
+            pass
+        assert seen == []
+
+    def test_deduplicates_repeats(self):
+        with self.warned(*["attention used a non-deterministic algorithm"] * 3) as (seen, _):
+            pass
+        assert len(seen) == 1
+
+    def test_is_empty_when_nothing_warns(self):
+        with watch_nondeterminism() as seen:
+            pass
+        assert seen == []
+
+    def test_restores_the_previous_handler(self):
+        before = warnings.showwarning
+        with watch_nondeterminism():
+            assert warnings.showwarning is not before
+        assert warnings.showwarning is before
+
+    def test_still_shows_the_warning(self):
+        # The watcher wraps whatever handler it found rather than replacing it, so a warning
+        # it records must also reach the handler underneath -- here, the recorder.
+        with self.warned("a non-deterministic algorithm was used") as (seen, shown):
+            pass
+        assert len(seen) == 1
+        assert len(shown) == 1
 
 
 class TestProvenance:

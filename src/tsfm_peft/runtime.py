@@ -1,14 +1,21 @@
 """Seeding, environment capture and resource measurement.
 
-The claim this repo makes is that two runs of the same config on the same machine produce
-the same numbers, and that the accuracy figures come with their cost. Neither claim is
-checkable unless the run records what it ran on, so every metrics artifact carries the seed,
-the resolved package versions, the hardware and the wall-clock and memory a run consumed.
+The claim this repo makes is that a run reproduces on the same machine, and that the
+accuracy figures come with their cost. Neither claim is checkable unless the run records
+what it ran on, so every metrics artifact carries the seed, the resolved package versions,
+the hardware and the wall-clock and memory a run consumed.
 
 Determinism has a cost worth being explicit about: ``deterministic=True`` disables cuDNN's
 autotuner and picks deterministic kernels, which is typically a few percent slower. Since a
 wall-clock number is one of the things being reported, the flag is recorded in the artifact
 so a timing is never compared against one taken under different settings.
+
+Determinism also has a limit worth being explicit about. It is requested with
+``warn_only=True``, so an op with no deterministic implementation warns and falls back
+instead of failing the run -- which is the right trade (a benchmark that refuses to run
+measures nothing) but means "deterministic" is not the same as "bit-exact". The fallback is
+observable only as a warning, so :func:`watch_nondeterminism` collects those warnings and the
+run records them in its artifact next to the seed.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import random
 import subprocess
 import sys
 import time
+import warnings
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -41,6 +49,15 @@ TRACKED_PACKAGES: tuple[str, ...] = (
 
 #: Required before cuBLAS can be deterministic; must be set before the first CUDA call.
 CUBLAS_WORKSPACE_CONFIG = ":4096:8"
+
+#: Lower-cased fragments torch uses when it falls back to a non-deterministic kernel under
+#: ``warn_only=True``. Matched against warning text rather than against a torch API, because
+#: torch exposes no way to ask after the fact whether a fallback happened.
+NONDETERMINISM_WARNING_MARKERS: tuple[str, ...] = (
+    "non-deterministic",
+    "nondeterministic",
+    "does not have a deterministic implementation",
+)
 
 
 def _torch() -> Any | None:
@@ -96,6 +113,48 @@ def set_seed(seed: int, *, deterministic: bool = True) -> dict[str, Any]:
         torch.backends.cudnn.benchmark = False
     record["cublas_workspace_config"] = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
     return record
+
+
+@contextmanager
+def watch_nondeterminism() -> Iterator[list[str]]:
+    """Collect torch's warnings that a kernel with no deterministic implementation was used.
+
+    Because :func:`set_seed` asks for deterministic algorithms with ``warn_only=True``, such
+    an op -- memory-efficient attention's backward pass, on any GPU run that trains -- warns
+    and carries on. That warning is the only evidence the run is not bit-reproducible, and it
+    goes to stderr, where a log nobody kept is the last place it existed. Collecting it lets
+    the artifact carry it instead, so the results table can say which rows reproduce exactly
+    and which reproduce only to within floating-point accumulation order.
+
+    Warnings are still displayed exactly as they would have been; this only observes them.
+
+    Yields:
+        The distinct warning messages seen, in the order they were emitted. The list fills as
+        the block runs, so read it after the block exits.
+    """
+    seen: list[str] = []
+    previous = warnings.showwarning
+
+    def showwarning(
+        message: Warning | str,
+        category: type[Warning],
+        filename: str,
+        lineno: int,
+        file: Any = None,
+        line: str | None = None,
+    ) -> None:
+        """Record a determinism fallback, then show the warning the way it would have been."""
+        text = str(message).strip()
+        lowered = text.lower()
+        if any(marker in lowered for marker in NONDETERMINISM_WARNING_MARKERS) and text not in seen:
+            seen.append(text)
+        previous(message, category, filename, lineno, file, line)
+
+    warnings.showwarning = showwarning
+    try:
+        yield seen
+    finally:
+        warnings.showwarning = previous
 
 
 def package_versions(names: Sequence[str] = TRACKED_PACKAGES) -> dict[str, str | None]:

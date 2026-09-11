@@ -18,6 +18,7 @@ from tsfm_peft.metrics import (
     seasonal_naive_scale,
     smape,
     weighted_quantile_loss,
+    wmape,
 )
 
 
@@ -114,6 +115,44 @@ class TestSmape:
         assert result == pytest.approx([(0 + 2000 / 210) / 2, 0.0])
 
 
+class TestWmape:
+    def test_hand_computed(self):
+        # sum|e| = 10, sum|y| = 100 + 200 -> 100 * 10 / 300
+        assert wmape([[100.0, 200.0]], [[110.0, 200.0]]) == pytest.approx(1000 / 300)
+
+    def test_perfect_forecast_is_zero(self):
+        assert wmape([[3.0, 4.0]], [[3.0, 4.0]]) == pytest.approx(0.0)
+
+    def test_pools_rather_than_averaging_per_row(self):
+        # A small-magnitude row with a proportionally large error would dominate a mean of
+        # per-row ratios (100% on row 1); pooled, it is 1 part in 101.
+        pooled = wmape([[100.0], [1.0]], [[100.0], [2.0]])
+        assert pooled == pytest.approx(100 * 1 / 101)
+
+    def test_a_near_zero_observation_cannot_blow_it_up(self):
+        # The MAPE failure mode: dividing a fixed error by an arbitrarily small observation.
+        # Here the denominator is the total, so the metric stays finite as y -> 0.
+        assert wmape([[1000.0, 1e-9]], [[1000.0, 1.0]]) < 1.0
+
+    def test_is_scale_invariant(self):
+        assert wmape([[10.0, 20.0]], [[11.0, 19.0]]) == pytest.approx(
+            wmape([[1000.0, 2000.0]], [[1100.0, 1900.0]])
+        )
+
+    def test_exactly_predicted_zeros_contribute_zero_not_an_error(self):
+        assert wmape([[0.0, 0.0]], [[0.0, 0.0]]) == pytest.approx(0.0)
+
+    def test_rejects_an_all_zero_target_that_was_not_predicted(self):
+        # A relative error measured against nothing. Better to refuse than to publish a
+        # stand-in that reads like a measurement.
+        with pytest.raises(ValueError, match="undefined"):
+            wmape([[0.0, 0.0]], [[0.0, 1.0]])
+
+    def test_rejects_mismatched_shapes(self):
+        with pytest.raises(ValueError, match="shape mismatch"):
+            wmape([[1.0, 2.0]], [[1.0]])
+
+
 class TestQuantileLoss:
     def test_median_level_reduces_to_normalised_mae(self):
         # 2 * sum(0.5 * |e|) / sum(|y|) = sum|e| / sum|y| = 1 / 3
@@ -205,6 +244,31 @@ class TestEvaluateForecasts:
         assert result.wql == pytest.approx(200 / 2002)
         # Macro: (0 + 200/2000) / 2 = 0.05
         assert result.wql_macro == pytest.approx(0.05)
+
+    def test_pooled_wmape_is_dominated_by_the_large_series_but_macro_is_not(self):
+        # Same shape of argument as the WQL case above, and the same reason for reporting
+        # both: over channels of different scale the pooled number is the large channel.
+        y_true = np.array([[1.0, 1.0], [1000.0, 1000.0]])
+        y_pred = np.array([[2.0, 2.0], [1100.0, 1100.0]])
+        preds_q = self._flat_quantiles(y_pred, 1)
+        result = evaluate_forecasts(
+            y_true, y_pred, preds_q, ["small", "large"], [1.0, 1.0], levels=[0.5]
+        )
+        # Pooled: 100 * (2 + 200) / 2002 -- the small series is 1% of the denominator.
+        assert result.wmape == pytest.approx(100 * 202 / 2002)
+        # Macro: (100% + 10%) / 2, where the small series' own error is 100% of its size.
+        assert result.per_series["small"]["wmape"] == pytest.approx(100.0)
+        assert result.per_series["large"]["wmape"] == pytest.approx(10.0)
+        assert result.wmape_macro == pytest.approx(55.0)
+
+    def test_wmape_survives_a_round_trip_through_the_artifact_dict(self):
+        y_true = np.array([[10.0, 20.0]])
+        y_pred = np.array([[11.0, 20.0]])
+        preds_q = self._flat_quantiles(y_pred, 1)
+        payload = evaluate_forecasts(y_true, y_pred, preds_q, ["s"], [1.0], levels=[0.5]).to_dict()
+        assert payload["wmape"] == pytest.approx(100 / 30)
+        assert payload["wmape_macro"] == pytest.approx(100 / 30)
+        assert payload["per_series"]["s"]["wmape"] == pytest.approx(100 / 30)
 
     def test_per_quantile_losses_are_keyed_by_level(self):
         y_true = np.array([[4.0]])

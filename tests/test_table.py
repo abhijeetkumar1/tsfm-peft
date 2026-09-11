@@ -21,6 +21,7 @@ from tsfm_peft.cli import main
 from tsfm_peft.config import load_experiment
 from tsfm_peft.table import (
     BEGIN_MARKER,
+    COLUMNS,
     END_MARKER,
     MISSING,
     PENDING,
@@ -48,6 +49,7 @@ def make_artifact(
     n_val_windows=2,
     stride=None,
     mase=0.8,
+    wmape=None,
     window_set="test",
     total_parameters=236_000_000,
     trainable_parameters=4_915_200,
@@ -104,6 +106,7 @@ def make_artifact(
             "wql_macro": 0.15,
             "n_series": n_series,
             "n_rows": n_series * n_test_windows,
+            **({} if wmape is None else {"wmape": wmape, "wmape_macro": wmape + 1.0}),
         },
         "resources": {
             "phases": phases,
@@ -286,7 +289,7 @@ class TestFormatting:
 
     def test_numeric_columns_are_right_aligned(self):
         alignment = render(collect_rows([make_artifact()])).splitlines()[5]
-        assert alignment == "|---|---:|---:|---:|---:|---:|---:|---:|"
+        assert alignment == "|---|" + "---:|" * (len(COLUMNS) - 1)
 
 
 class TestPendingRows:
@@ -392,6 +395,54 @@ class TestAggregate:
         assert "DoRA" not in render(rows).split("### Aggregate")[1]
 
 
+class TestWmapeColumn:
+    def header(self, artifacts):
+        """The per-dataset table's header row."""
+        return render(collect_rows(artifacts)).splitlines()[4]
+
+    def test_column_is_present(self):
+        assert "| wMAPE |" in self.header([make_artifact(wmape=23.4)])
+
+    def test_renders_the_pooled_value(self):
+        table = render(collect_rows([make_artifact(wmape=23.456)]))
+        assert "23.456" in table
+
+    def body(self, artifacts):
+        """The first body row of the per-dataset table, as stripped cells."""
+        line = render(collect_rows(artifacts)).splitlines()[6]
+        return [cell.strip() for cell in line.strip("|").split("|")]
+
+    def test_sits_between_smape_and_wql(self):
+        assert self.body([make_artifact(wmape=23.456)])[3] == "23.456"
+
+    def test_rows_written_before_wmape_render_as_missing(self):
+        # The alternative -- a blank, or a zero -- reads as a measurement rather than as an
+        # artifact that predates the metric.
+        assert self.body([make_artifact()])[3] == MISSING
+
+    def test_aggregate_averages_the_macro_variant(self):
+        rows = collect_rows(
+            [
+                make_artifact(name="etth1-timesfm-lora", dataset="etth1", wmape=10.0),
+                make_artifact(name="nn5_daily-timesfm-lora", dataset="nn5_daily", wmape=20.0),
+            ]
+        )
+        aggregate = render(rows).split("### Aggregate")[1]
+        assert "wMAPE (macro)" in aggregate
+        # macro is pooled + 1.0 in the fixture, so the mean of 11.0 and 21.0.
+        assert "16.000" in aggregate
+
+    def test_aggregate_skips_it_when_a_dataset_predates_it(self):
+        rows = collect_rows(
+            [
+                make_artifact(name="etth1-timesfm-lora", dataset="etth1", wmape=10.0),
+                make_artifact(name="nn5_daily-timesfm-lora", dataset="nn5_daily"),
+            ]
+        )
+        aggregate = render(rows).split("### Aggregate")[1]
+        assert MISSING in aggregate
+
+
 class TestProvenanceNotes:
     def notes(self, artifacts, configs=()):
         return [
@@ -429,6 +480,23 @@ class TestProvenanceNotes:
     def test_mixed_seeds_are_called_out(self):
         notes = self.notes([make_artifact(name="a", seed=0), make_artifact(name="b", seed=1)])
         assert any("different seeds" in note for note in notes)
+
+    def test_notes_which_rows_were_not_bit_exact(self):
+        loose = make_artifact(name="etth1-timesfm-lora", trained=True)
+        loose["seed"]["nondeterministic_kernels"] = ["attention used a non-deterministic algo"]
+        notes = self.notes([make_artifact(name="etth1-timesfm-zeroshot"), loose])
+        (note,) = [n for n in notes if "bit-exactly" in n]
+        assert "`etth1-timesfm-lora`" in note
+        assert "`etth1-timesfm-zeroshot`" not in note
+
+    def test_says_nothing_when_every_kernel_was_deterministic(self):
+        artifact = make_artifact()
+        artifact["seed"]["nondeterministic_kernels"] = []
+        assert not any("bit-exactly" in note for note in self.notes([artifact]))
+
+    def test_says_nothing_for_artifacts_written_before_it_was_recorded(self):
+        # No key at all: absence of a record is not a record of absence, so claim nothing.
+        assert not any("bit-exactly" in note for note in self.notes([make_artifact()]))
 
 
 class TestReadmeInjection:
