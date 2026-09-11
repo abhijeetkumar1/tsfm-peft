@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `dev` is where work lands before a PR exists, and a branch nothing checks is a branch
+    # that can sit broken: a bad merge resolution into `dev` once reached a PR as the first
+    # thing that noticed. A commit with an open PR runs twice, which is the cheaper mistake.
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
