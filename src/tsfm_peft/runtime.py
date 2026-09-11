@@ -50,6 +50,12 @@ TRACKED_PACKAGES: tuple[str, ...] = (
 #: Required before cuBLAS can be deterministic; must be set before the first CUDA call.
 CUBLAS_WORKSPACE_CONFIG = ":4096:8"
 
+#: Set by ``scripts/run_all.sh`` to the number of arms running at once on this host. A
+#: timing taken while other arms competed for CPU and disk is not the same measurement as one
+#: taken with the machine to itself, and nothing else in the artifact would show the
+#: difference.
+CONCURRENCY_ENV_VAR = "TSFM_PEFT_CONCURRENCY"
+
 #: Lower-cased fragments torch uses when it falls back to a non-deterministic kernel under
 #: ``warn_only=True``. Matched against warning text rather than against a torch API, because
 #: torch exposes no way to ask after the fact whether a fallback happened.
@@ -220,12 +226,40 @@ def hardware_info() -> dict[str, Any]:
     return info
 
 
+def scheduling_info() -> dict[str, Any]:
+    """Return how this run was scheduled: arms sharing the host, and the devices it can see.
+
+    ``concurrent_runs`` is ``None`` when nothing said, which is deliberately not the same as
+    ``1``: a run that did not set the variable may still have shared the machine, and
+    recording silence as "had the host to itself" would invent the fact the field exists to
+    carry. A value that does not parse as a positive integer is treated the same way --
+    unknown rather than fatal, because this is assembled after the run has finished and a
+    typo in an environment variable should not destroy a completed arm.
+
+    Returns:
+        A JSON-serialisable mapping for the artifact's environment block.
+    """
+    raw = os.environ.get(CONCURRENCY_ENV_VAR)
+    concurrent: int | None = None
+    if raw is not None:
+        try:
+            parsed = int(raw)
+        except ValueError:
+            parsed = 0
+        concurrent = parsed if parsed > 0 else None
+    return {
+        "concurrent_runs": concurrent,
+        "visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+    }
+
+
 def collect_environment() -> dict[str, Any]:
     """Return the full provenance block written into every metrics artifact."""
     return {
         "python": sys.version.split()[0],
         "packages": package_versions(),
         "hardware": hardware_info(),
+        "scheduling": scheduling_info(),
         "git": git_revision(),
     }
 

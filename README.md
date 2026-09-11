@@ -83,6 +83,33 @@ uv run tsfm-peft run --check configs/experiments/*.yaml
 uv run tsfm-peft list
 ```
 
+### More than one GPU
+
+The arms are independent and one arm uses a fraction of a card, so the parallelism worth
+having is across arms, not inside one. `scripts/run_all.sh` runs the whole set with one
+process per visible GPU, each pinned with `CUDA_VISIBLE_DEVICES` and calling the same
+`tsfm-peft run` a serial invocation would:
+
+```bash
+scripts/run_all.sh                        # one process per visible GPU
+TSFM_PEFT_PARALLEL=1 scripts/run_all.sh   # force serial
+```
+
+An arm that already has an artifact is skipped, so rerunning resumes; a failing arm does not
+stop the others; each writes its own log under `logs/`, since concurrent arms cannot share a
+terminal legibly. The script refuses to start if a config exists that its arm list does not
+mention, so a new arm cannot be silently left out of the table.
+
+**This trades the cost columns for wall clock.** Concurrent arms compete for CPU, disk and
+host memory, so their train-time and peak-memory figures include contention a serial run does
+not have. Each artifact records `environment.scheduling.concurrent_runs`, and the generated
+table names the rows it applies to, so the two kinds of measurement cannot be quietly averaged
+together. Run with `TSFM_PEFT_PARALLEL=1` when the cost columns are the point of the exercise.
+
+Distributed training is a different thing and is deliberately not here: splitting a batch
+across devices changes the effective batch size and therefore the numbers, which would make
+the rows incomparable with every row already published.
+
 ### Docker
 
 There is a Docker image if you would rather not install anything:
