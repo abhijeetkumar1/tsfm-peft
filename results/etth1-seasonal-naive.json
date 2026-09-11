@@ -1,0 +1,254 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-09-11T09:31:38+00:00",
+  "experiment": {
+    "name": "etth1-seasonal-naive",
+    "notes": "Out-of-sample seasonal-naive floor, scored on exactly the same windows as every other arm."
+  },
+  "config": {
+    "name": "etth1-seasonal-naive",
+    "data": {
+      "dataset": "etth1",
+      "protocol": {
+        "horizon": 96,
+        "context_length": 512,
+        "n_test_windows": 8,
+        "n_val_windows": 2,
+        "stride": null
+      },
+      "scaler": "standard"
+    },
+    "model": {
+      "name": "seasonal_naive",
+      "options": {}
+    },
+    "training": null,
+    "seed": 0,
+    "deterministic": true,
+    "notes": "Out-of-sample seasonal-naive floor, scored on exactly the same windows as every other arm."
+  },
+  "seed": {
+    "seed": 0,
+    "deterministic": true,
+    "python_hash_seed": "0",
+    "torch_seeded": true,
+    "cublas_workspace_config": ":4096:8",
+    "nondeterministic_kernels": []
+  },
+  "data": {
+    "dataset": {
+      "name": "etth1",
+      "freq": "h",
+      "seasonality": 24,
+      "n_series": 7,
+      "min_length": 17420,
+      "max_length": 17420,
+      "total_observations": 121940,
+      "license": "CC-BY-ND-4.0",
+      "source_url": "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv",
+      "description": "Electricity Transformer Temperature, hourly, 7 channels treated as independent univariate series."
+    },
+    "protocol": {
+      "horizon": 96,
+      "context_length": 512,
+      "n_test_windows": 8,
+      "n_val_windows": 2,
+      "stride": null
+    },
+    "effective_stride": 96,
+    "n_val_windows_total": 14,
+    "n_test_windows_total": 56,
+    "fit_end": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    },
+    "train_lengths": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    }
+  },
+  "model": {
+    "name": "seasonal_naive",
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "max_horizon": null,
+    "batch_size": 4096,
+    "requires_external_scaling": false,
+    "total_parameters": 0,
+    "trainable_parameters": 0,
+    "trainable_pct": 0.0,
+    "seasonality": 24
+  },
+  "training": null,
+  "results": {
+    "window_set": "test",
+    "scaler_kind": null,
+    "quantile_crossing_rate": 0.0,
+    "mase": 1.0738583891354545,
+    "smape": 33.57424088594676,
+    "wmape": 29.823289457887988,
+    "wmape_macro": 27.251593027368017,
+    "wql": 0.2528770173037276,
+    "wql_macro": 0.2296046243767091,
+    "per_quantile_wql": {
+      "0.1": 0.1758882237248383,
+      "0.2": 0.2403310029878868,
+      "0.3": 0.2758364056475306,
+      "0.4": 0.2922656334610372,
+      "0.5": 0.29823289457887986,
+      "0.6": 0.29402265826832574,
+      "0.7": 0.27543396086492783,
+      "0.8": 0.24252564212835606,
+      "0.9": 0.18135673407176567
+    },
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "n_series": 7,
+    "n_rows": 56,
+    "horizon": 96,
+    "per_series": {
+      "HUFL": {
+        "mase": 1.284698809187184,
+        "smape": 55.329644751889774,
+        "wmape": 36.99010963212207,
+        "wql": 0.32056748505968613,
+        "n_windows": 8
+      },
+      "HULL": {
+        "mase": 1.062221405702545,
+        "smape": 23.991286885047746,
+        "wmape": 21.85030782745241,
+        "wql": 0.1790772306157119,
+        "n_windows": 8
+      },
+      "MUFL": {
+        "mase": 1.3691034366412538,
+        "smape": 59.67859233364203,
+        "wmape": 45.992958276489205,
+        "wql": 0.3988618514879079,
+        "n_windows": 8
+      },
+      "MULL": {
+        "mase": 1.020226041739238,
+        "smape": 40.38233442459327,
+        "wmape": 33.5612625744213,
+        "wql": 0.27219983039104445,
+        "n_windows": 8
+      },
+      "LUFL": {
+        "mase": 0.9071909480272811,
+        "smape": 16.631216947609875,
+        "wmape": 15.821932011185353,
+        "wql": 0.13816902608795123,
+        "n_windows": 8
+      },
+      "LULL": {
+        "mase": 1.0010331210291903,
+        "smape": 17.761505438388284,
+        "wmape": 16.67486770708746,
+        "wql": 0.1392682982354953,
+        "n_windows": 8
+      },
+      "OT": {
+        "mase": 0.8725349616214889,
+        "smape": 21.245105420456337,
+        "wmape": 19.869713162818286,
+        "wql": 0.1590886487591666,
+        "n_windows": 8
+      }
+    }
+  },
+  "resources": {
+    "phases": [
+      {
+        "label": "load_data",
+        "seconds": 0.1546806070000457,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 678244352,
+        "device": null
+      },
+      {
+        "label": "load_model",
+        "seconds": 4.099100078747142e-05,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 678244352,
+        "device": null
+      },
+      {
+        "label": "predict_test",
+        "seconds": 0.00866005399984715,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 678244352,
+        "device": null
+      }
+    ],
+    "total_seconds": 0.16338165200068033,
+    "peak_gpu_bytes": null,
+    "peak_host_rss_bytes": 678244352
+  },
+  "environment": {
+    "python": "3.12.13",
+    "packages": {
+      "tsfm-peft": "0.1.0.dev0",
+      "numpy": "2.0.2",
+      "torch": "2.10.0+cu128",
+      "transformers": "5.17.0",
+      "peft": "0.19.1",
+      "accelerate": "1.13.0",
+      "safetensors": "0.8.0",
+      "pydantic": "2.12.3"
+    },
+    "hardware": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "cuda_available": true,
+      "devices": [
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        },
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        }
+      ],
+      "cuda_version": "12.8"
+    },
+    "git": {
+      "commit": "bd322e40e1cbabf0a5604537ab0eafc64c9a1ca8",
+      "dirty": false
+    }
+  }
+}

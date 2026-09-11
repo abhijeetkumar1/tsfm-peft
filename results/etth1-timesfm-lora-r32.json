@@ -1,0 +1,682 @@
+{
+  "schema_version": 2,
+  "created_at": "2026-09-11T10:17:27+00:00",
+  "experiment": {
+    "name": "etth1-timesfm-lora-r32",
+    "notes": "Rank ablation row, rank 32. Compare against the other -r rows and against etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep."
+  },
+  "config": {
+    "name": "etth1-timesfm-lora-r32",
+    "data": {
+      "dataset": "etth1",
+      "protocol": {
+        "horizon": 96,
+        "context_length": 512,
+        "n_test_windows": 8,
+        "n_val_windows": 2,
+        "stride": null
+      },
+      "scaler": "standard"
+    },
+    "model": {
+      "name": "timesfm_2p5",
+      "options": {
+        "checkpoint": "google/timesfm-2.5-200m-transformers",
+        "revision": null,
+        "device": "auto",
+        "dtype": "float32",
+        "batch_size": 32,
+        "clamp_negative": "per_series",
+        "peft": {
+          "method": "lora",
+          "rank": 32,
+          "alpha": 64,
+          "dropout": 0.0,
+          "target_modules": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      }
+    },
+    "training": {
+      "max_steps": 1000,
+      "batch_size": 8,
+      "gradient_accumulation_steps": 1,
+      "learning_rate": 0.0001,
+      "weight_decay": 0.0,
+      "warmup_steps": 50,
+      "schedule": "cosine",
+      "grad_clip": 1.0,
+      "train_stride": null,
+      "max_windows_per_series": null,
+      "eval_every": 100,
+      "patience": 3,
+      "selection_metric": "mase",
+      "log_every": 10,
+      "save_adapter": true,
+      "seed_offset": 0
+    },
+    "seed": 0,
+    "deterministic": true,
+    "notes": "Rank ablation row, rank 32. Compare against the other -r rows and against etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep."
+  },
+  "seed": {
+    "seed": 0,
+    "deterministic": true,
+    "python_hash_seed": "0",
+    "torch_seeded": true,
+    "cublas_workspace_config": ":4096:8",
+    "nondeterministic_kernels": [
+      "Memory Efficient attention defaults to a non-deterministic algorithm. To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False). (Triggered internally at /pytorch/aten/src/ATen/native/transformers/cuda/attention_backward.cu:897.)"
+    ]
+  },
+  "data": {
+    "dataset": {
+      "name": "etth1",
+      "freq": "h",
+      "seasonality": 24,
+      "n_series": 7,
+      "min_length": 17420,
+      "max_length": 17420,
+      "total_observations": 121940,
+      "license": "CC-BY-ND-4.0",
+      "source_url": "https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv",
+      "description": "Electricity Transformer Temperature, hourly, 7 channels treated as independent univariate series."
+    },
+    "protocol": {
+      "horizon": 96,
+      "context_length": 512,
+      "n_test_windows": 8,
+      "n_val_windows": 2,
+      "stride": null
+    },
+    "effective_stride": 96,
+    "n_val_windows_total": 14,
+    "n_test_windows_total": 56,
+    "fit_end": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    },
+    "train_lengths": {
+      "HUFL": 16460,
+      "HULL": 16460,
+      "MUFL": 16460,
+      "MULL": 16460,
+      "LUFL": 16460,
+      "LULL": 16460,
+      "OT": 16460
+    }
+  },
+  "model": {
+    "name": "timesfm_2p5",
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "max_horizon": 128,
+    "batch_size": 32,
+    "requires_external_scaling": false,
+    "total_parameters": 241119680,
+    "trainable_parameters": 9830400,
+    "frozen_parameters": 231289280,
+    "trainable_pct": 4.076979531492411,
+    "checkpoint": "google/timesfm-2.5-200m-transformers",
+    "revision": null,
+    "device": "cuda",
+    "dtype": "float32",
+    "clamp_negative": "per_series",
+    "force_flip_invariance": null,
+    "model_horizon": 128,
+    "patch_length": 32,
+    "median_head_index": 5,
+    "peft": {
+      "method": "lora",
+      "rank": 32,
+      "alpha": 64.0,
+      "scaling": 2.0,
+      "dropout": 0.0,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "fc1",
+        "fc2"
+      ],
+      "modules_to_save": [],
+      "bias": "none"
+    }
+  },
+  "training": {
+    "n_train_windows": 1162,
+    "steps": 600,
+    "epochs": 4.110154905335628,
+    "final_loss": 0.5527460694313049,
+    "loss_curve": [
+      {
+        "step": 10,
+        "loss": 1.0119338750839233,
+        "lr": 2.2000000000000003e-05
+      },
+      {
+        "step": 20,
+        "loss": 1.1460395276546478,
+        "lr": 4.2e-05
+      },
+      {
+        "step": 30,
+        "loss": 1.3621935546398163,
+        "lr": 6.2e-05
+      },
+      {
+        "step": 40,
+        "loss": 1.3669591784477233,
+        "lr": 8.2e-05
+      },
+      {
+        "step": 50,
+        "loss": 0.8525381743907928,
+        "lr": 0.0001
+      },
+      {
+        "step": 60,
+        "loss": 1.2108102440834045,
+        "lr": 9.997266286704631e-05
+      },
+      {
+        "step": 70,
+        "loss": 1.8937788128852844,
+        "lr": 9.989068136093873e-05
+      },
+      {
+        "step": 80,
+        "loss": 1.1050850450992584,
+        "lr": 9.975414512725057e-05
+      },
+      {
+        "step": 90,
+        "loss": 0.9929578244686127,
+        "lr": 9.956320346634876e-05
+      },
+      {
+        "step": 100,
+        "loss": 1.1287557482719421,
+        "lr": 9.931806517013612e-05
+      },
+      {
+        "step": 110,
+        "loss": 1.1018644392490387,
+        "lr": 9.901899829374047e-05
+      },
+      {
+        "step": 120,
+        "loss": 1.2009597659111022,
+        "lr": 9.86663298624003e-05
+      },
+      {
+        "step": 130,
+        "loss": 0.8078935384750366,
+        "lr": 9.826044551386744e-05
+      },
+      {
+        "step": 140,
+        "loss": 0.955494087934494,
+        "lr": 9.780178907671789e-05
+      },
+      {
+        "step": 150,
+        "loss": 1.0247404038906098,
+        "lr": 9.729086208503174e-05
+      },
+      {
+        "step": 160,
+        "loss": 0.8879413783550263,
+        "lr": 9.672822322997305e-05
+      },
+      {
+        "step": 170,
+        "loss": 0.9523523569107055,
+        "lr": 9.611448774886924e-05
+      },
+      {
+        "step": 180,
+        "loss": 0.9076875865459442,
+        "lr": 9.545032675245813e-05
+      },
+      {
+        "step": 190,
+        "loss": 0.8439309775829316,
+        "lr": 9.473646649103818e-05
+      },
+      {
+        "step": 200,
+        "loss": 1.0251590490341187,
+        "lr": 9.397368756032445e-05
+      },
+      {
+        "step": 210,
+        "loss": 1.0567396223545074,
+        "lr": 9.316282404787871e-05
+      },
+      {
+        "step": 220,
+        "loss": 0.896274083852768,
+        "lr": 9.230476262104677e-05
+      },
+      {
+        "step": 230,
+        "loss": 0.842010909318924,
+        "lr": 9.140044155740101e-05
+      },
+      {
+        "step": 240,
+        "loss": 1.0850652694702148,
+        "lr": 9.045084971874738e-05
+      },
+      {
+        "step": 250,
+        "loss": 0.8352160811424255,
+        "lr": 8.945702546981969e-05
+      },
+      {
+        "step": 260,
+        "loss": 0.8880734503269195,
+        "lr": 8.842005554284296e-05
+      },
+      {
+        "step": 270,
+        "loss": 1.0552201509475707,
+        "lr": 8.73410738492077e-05
+      },
+      {
+        "step": 280,
+        "loss": 1.8331372916698456,
+        "lr": 8.622126023955446e-05
+      },
+      {
+        "step": 290,
+        "loss": 0.9667060136795044,
+        "lr": 8.506183921362443e-05
+      },
+      {
+        "step": 300,
+        "loss": 0.8560197353363037,
+        "lr": 8.386407858128706e-05
+      },
+      {
+        "step": 310,
+        "loss": 0.7700807273387908,
+        "lr": 8.262928807620843e-05
+      },
+      {
+        "step": 320,
+        "loss": 0.9544214069843292,
+        "lr": 8.135881792367686e-05
+      },
+      {
+        "step": 330,
+        "loss": 0.8408378481864929,
+        "lr": 8.005405736415126e-05
+      },
+      {
+        "step": 340,
+        "loss": 0.7507633566856384,
+        "lr": 7.871643313414718e-05
+      },
+      {
+        "step": 350,
+        "loss": 0.8399178445339203,
+        "lr": 7.734740790612136e-05
+      },
+      {
+        "step": 360,
+        "loss": 1.288190770149231,
+        "lr": 7.594847868906076e-05
+      },
+      {
+        "step": 370,
+        "loss": 0.7901361107826232,
+        "lr": 7.452117519152542e-05
+      },
+      {
+        "step": 380,
+        "loss": 0.8192091226577759,
+        "lr": 7.30670581489344e-05
+      },
+      {
+        "step": 390,
+        "loss": 0.6884343385696411,
+        "lr": 7.158771761692464e-05
+      },
+      {
+        "step": 400,
+        "loss": 0.6913156419992447,
+        "lr": 7.008477123264848e-05
+      },
+      {
+        "step": 410,
+        "loss": 0.7022282660007477,
+        "lr": 6.855986244591104e-05
+      },
+      {
+        "step": 420,
+        "loss": 0.758780574798584,
+        "lr": 6.701465872208216e-05
+      },
+      {
+        "step": 430,
+        "loss": 0.8094321489334106,
+        "lr": 6.545084971874738e-05
+      },
+      {
+        "step": 440,
+        "loss": 0.8451519966125488,
+        "lr": 6.387014543809223e-05
+      },
+      {
+        "step": 450,
+        "loss": 0.617054557800293,
+        "lr": 6.227427435703997e-05
+      },
+      {
+        "step": 460,
+        "loss": 1.1340695142745971,
+        "lr": 6.066498153718735e-05
+      },
+      {
+        "step": 470,
+        "loss": 0.6118628144264221,
+        "lr": 5.90440267166055e-05
+      },
+      {
+        "step": 480,
+        "loss": 0.6857912600040436,
+        "lr": 5.74131823855921e-05
+      },
+      {
+        "step": 490,
+        "loss": 0.7099632143974304,
+        "lr": 5.577423184847932e-05
+      },
+      {
+        "step": 500,
+        "loss": 0.8309780180454254,
+        "lr": 5.4128967273616625e-05
+      },
+      {
+        "step": 510,
+        "loss": 0.6587820887565613,
+        "lr": 5.247918773366112e-05
+      },
+      {
+        "step": 520,
+        "loss": 0.6299517154693604,
+        "lr": 5.0826697238317935e-05
+      },
+      {
+        "step": 530,
+        "loss": 0.596802619099617,
+        "lr": 4.917330276168208e-05
+      },
+      {
+        "step": 540,
+        "loss": 0.6301886200904846,
+        "lr": 4.7520812266338885e-05
+      },
+      {
+        "step": 550,
+        "loss": 0.6537307322025299,
+        "lr": 4.5871032726383386e-05
+      },
+      {
+        "step": 560,
+        "loss": 0.7092277705669403,
+        "lr": 4.4225768151520694e-05
+      },
+      {
+        "step": 570,
+        "loss": 0.7074894964694977,
+        "lr": 4.2586817614407895e-05
+      },
+      {
+        "step": 580,
+        "loss": 0.6006411701440811,
+        "lr": 4.095597328339452e-05
+      },
+      {
+        "step": 590,
+        "loss": 0.6230992287397384,
+        "lr": 3.933501846281267e-05
+      },
+      {
+        "step": 600,
+        "loss": 0.5527460694313049,
+        "lr": 3.772572564296005e-05
+      }
+    ],
+    "val_curve": [
+      {
+        "step": 100,
+        "mase": 0.9553855070313814,
+        "smape": 33.262552939218565,
+        "wql": 0.2680432543219067
+      },
+      {
+        "step": 200,
+        "mase": 0.9244320486469544,
+        "smape": 32.809698276603136,
+        "wql": 0.2551654627250715
+      },
+      {
+        "step": 300,
+        "mase": 0.8688697886783984,
+        "smape": 31.77167823974271,
+        "wql": 0.22569056055130984
+      },
+      {
+        "step": 400,
+        "mase": 0.8964834327882604,
+        "smape": 32.17052128448388,
+        "wql": 0.24294652478769693
+      },
+      {
+        "step": 500,
+        "mase": 0.8896506655057977,
+        "smape": 31.956168550753713,
+        "wql": 0.24366531987774045
+      },
+      {
+        "step": 600,
+        "mase": 0.8786162680187584,
+        "smape": 32.15791107526186,
+        "wql": 0.23591287945413475
+      }
+    ],
+    "best_step": 300,
+    "best_metric": 0.8688697886783984,
+    "selection": "best_val",
+    "selection_metric": "mase",
+    "early_stopped": true,
+    "adapter_path": "/root/kaggle/working/tsfm-peft/results/adapters/etth1-timesfm-lora-r32",
+    "total_parameters": 241119680,
+    "trainable_parameters": 9830400,
+    "frozen_parameters": 231289280,
+    "trainable_pct": 4.076979531492411
+  },
+  "results": {
+    "window_set": "test",
+    "scaler_kind": null,
+    "quantile_crossing_rate": 0.0003952752976190476,
+    "mase": 0.885604218684797,
+    "smape": 29.18864875587525,
+    "wmape": 24.01885691251185,
+    "wmape_macro": 22.39158340072651,
+    "wql": 0.18895227829915479,
+    "wql_macro": 0.17636964272731223,
+    "per_quantile_wql": {
+      "0.1": 0.11145441818101597,
+      "0.2": 0.17027188541518468,
+      "0.3": 0.2113607709955995,
+      "0.4": 0.23331955192436574,
+      "0.5": 0.2401885691251185,
+      "0.6": 0.23285981640324632,
+      "0.7": 0.211879406296416,
+      "0.8": 0.1757190082885451,
+      "0.9": 0.11351707806290146
+    },
+    "quantile_levels": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "n_series": 7,
+    "n_rows": 56,
+    "horizon": 96,
+    "per_series": {
+      "HUFL": {
+        "mase": 1.0739447793459116,
+        "smape": 54.57415970151369,
+        "wmape": 30.921905463572614,
+        "wql": 0.24057683277554873,
+        "n_windows": 8
+      },
+      "HULL": {
+        "mase": 0.9177073388795054,
+        "smape": 20.385266373285425,
+        "wmape": 18.877597215024128,
+        "wql": 0.14733430897825095,
+        "n_windows": 8
+      },
+      "MUFL": {
+        "mase": 1.1172159340160535,
+        "smape": 52.845027580190916,
+        "wmape": 37.531178772793794,
+        "wql": 0.286624246508992,
+        "n_windows": 8
+      },
+      "MULL": {
+        "mase": 0.8501752696891619,
+        "smape": 33.8045948525825,
+        "wmape": 27.967287927365234,
+        "wql": 0.21833493131626192,
+        "n_windows": 8
+      },
+      "LUFL": {
+        "mase": 0.8284483776295994,
+        "smape": 14.845484957508914,
+        "wmape": 14.448616285397678,
+        "wql": 0.11836875903001144,
+        "n_windows": 8
+      },
+      "LULL": {
+        "mase": 0.8429070961850115,
+        "smape": 14.616755552518343,
+        "wmape": 14.040858412156826,
+        "wql": 0.11326295723592793,
+        "n_windows": 8
+      },
+      "OT": {
+        "mase": 0.5688307350483359,
+        "smape": 13.249252273526945,
+        "wmape": 12.953639728775265,
+        "wql": 0.11008546324619278,
+        "n_windows": 8
+      }
+    }
+  },
+  "resources": {
+    "phases": [
+      {
+        "label": "load_data",
+        "seconds": 0.12170692499967117,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 678735872,
+        "device": null
+      },
+      {
+        "label": "load_model",
+        "seconds": 7.6113831819984625,
+        "peak_gpu_bytes": null,
+        "peak_host_rss_bytes": 1958543360,
+        "device": null
+      },
+      {
+        "label": "train",
+        "seconds": 276.2775997769986,
+        "peak_gpu_bytes": 1509451776,
+        "peak_host_rss_bytes": 1958543360,
+        "device": "cuda"
+      },
+      {
+        "label": "predict_test",
+        "seconds": 0.4075722260004113,
+        "peak_gpu_bytes": 1169318400,
+        "peak_host_rss_bytes": 1958543360,
+        "device": "cuda"
+      }
+    ],
+    "total_seconds": 284.41826210999716,
+    "peak_gpu_bytes": 1509451776,
+    "peak_host_rss_bytes": 1958543360
+  },
+  "environment": {
+    "python": "3.12.13",
+    "packages": {
+      "tsfm-peft": "0.1.0.dev0",
+      "numpy": "2.0.2",
+      "torch": "2.10.0+cu128",
+      "transformers": "5.17.0",
+      "peft": "0.19.1",
+      "accelerate": "1.13.0",
+      "safetensors": "0.8.0",
+      "pydantic": "2.12.3"
+    },
+    "hardware": {
+      "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+      "machine": "x86_64",
+      "processor": "x86_64",
+      "cpu_count": 4,
+      "cuda_available": true,
+      "devices": [
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        },
+        {
+          "name": "Tesla T4",
+          "total_memory_bytes": 15636037632,
+          "capability": "7.5"
+        }
+      ],
+      "cuda_version": "12.8"
+    },
+    "git": {
+      "commit": "bd322e40e1cbabf0a5604537ab0eafc64c9a1ca8",
+      "dirty": true
+    }
+  }
+}
