@@ -26,6 +26,9 @@ htmlcov/
 # Fine-tuned adapters land in results/adapters/<experiment>/; the weights are covered
 # by *.safetensors below but the directory carries a config and a card too.
 /results/adapters/
+# Per-arm stdout from scripts/run_all.sh. Concurrent arms cannot share a terminal legibly,
+# so each writes its own; the artifact is the record, not the log.
+/logs/
 /runs/
 /checkpoints/
 *.ckpt
