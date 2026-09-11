@@ -66,6 +66,48 @@ uv run tsfm-peft run --check configs/experiments/*.yaml
 uv run tsfm-peft list
 ```
 
+### On a Kaggle GPU
+
+If you do not have a GPU to hand, the whole set runs in a Kaggle notebook's terminal on a
+free T4. Set the session to **GPU T4** with **Internet on**, then, from the terminal:
+
+```bash
+git clone https://github.com/abhijeetkumar1/tsfm-peft.git && cd tsfm-peft
+pip uninstall -y torchao && pip install -e ".[models]"
+for n in etth1-seasonal-naive nn5_daily-seasonal-naive \
+         etth1-timesfm-zeroshot nn5_daily-timesfm-zeroshot \
+         etth1-timesfm-lora etth1-timesfm-dora \
+         nn5_daily-timesfm-lora nn5_daily-timesfm-dora \
+         etth1-timesfm-lora-r4 etth1-timesfm-lora-r8 etth1-timesfm-lora-r32; do
+  [ -f "results/$n.json" ] || tsfm-peft run "configs/experiments/$n.yaml" || echo "FAILED $n"
+done
+tsfm-peft table --configs configs/experiments --write
+```
+
+Four things that are specific to Kaggle rather than to this repo:
+
+- **Uninstall torchao first.** The image ships 0.10.0, and peft's LoRA dispatcher calls
+  `is_torchao_available()`, which *raises* below 0.16 rather than returning `False` — so
+  every fine-tuning arm dies at `get_peft_model`. Nothing here uses torchao.
+- **Do not create a virtualenv.** The CUDA build of torch lives in the system environment;
+  a fresh venv re-downloads a multi-gigabyte wheel that may not match the driver. The
+  `models` extra needs `torch>=2.4`, which the image already satisfies, so torch is
+  untouched.
+- **The loop is the resume.** An arm with an artifact is skipped, so after a session times
+  out you reconnect and run the same loop again; it costs you only the arm that was in
+  flight. The order above banks the baselines and the zero-shot reference rows first, since
+  a fine-tuned number with nothing to compare it against is not yet a result.
+- **Artifacts written into the repository make the tree dirty**, and every run after the
+  first then records `"dirty": true` and cannot be tied to a commit. Either point
+  `TSFM_PEFT_RESULTS` outside the clone and copy the JSON in at the end, or add
+  `results/*.json` to `.git/info/exclude` (local to your clone, not part of the repo) and
+  commit them with `git add -f`.
+
+Check the notes under the generated table before publishing it. If they say the rows came
+from more than one machine, Kaggle gave you a different GPU between sessions: the accuracy
+columns are still valid, the peak-memory and train-time columns are not comparable across
+rows.
+
 ### Docker
 
 There is a Docker image if you would rather not install anything:
