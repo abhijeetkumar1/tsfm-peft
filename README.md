@@ -1,12 +1,10 @@
 # tsfm-peft
 
-Parameter-efficient fine-tuning (LoRA, DoRA) for time series foundation models, benchmarked
-honestly against zero-shot baselines.
+[![CI](https://github.com/abhijeetkumar1/tsfm-peft/actions/workflows/ci.yml/badge.svg)](https://github.com/abhijeetkumar1/tsfm-peft/actions/workflows/ci.yml)
 
-> **Status: v0.1 in progress.** This README is a placeholder; the real one lands with
-> milestone 6. The table below is generated from run artifacts by
-> `scripts/build_readme_table.py` and is never hand-edited, so no benchmark number appears
-> here until it comes from a real run.
+Does parameter-efficient fine-tuning actually earn its keep on a time series foundation
+model? This repo answers that for TimesFM 2.5 with LoRA and DoRA, on public data, under a
+protocol you can read in one sitting and reproduce with one command.
 
 ## Results
 
@@ -41,45 +39,211 @@ Test windows: horizon 56, context 256, 3 rolling origins per series.
 
 <!-- END RESULTS TABLE -->
 
-## Scope of v0.1
+Every number above is generated from run artifacts by `scripts/build_readme_table.py` and is
+never hand-edited. A number with no artifact behind it cannot appear in this table, and CI
+fails if the table and the artifacts disagree.
 
-| | |
-|---|---|
-| Model | TimesFM 2.5 (200M), `google/timesfm-2.5-200m-transformers`, Apache-2.0 |
-| Arms | zero-shot, LoRA, DoRA (+ a config-driven rank ablation) |
-| Datasets | ETTh1; NN5 Daily (Monash) |
-| Protocol | rolling-origin backtest, single fit on the training prefix |
-| Metrics | MASE, sMAPE, weighted quantile loss, plus trainable-parameter count/%, peak memory, wall-clock |
+## Reproduce
 
-Explicit non-goals: no web UI, no multi-GPU, no new architectures, no Moirai/Chronos
-implementations (the adapter interface is designed for them), no experiment-tracking service
-as a hard dependency.
+```bash
+uv sync --extra models                                                    # install
+uv run tsfm-peft run configs/experiments/{etth1,nn5_daily}-*.yaml && uv run tsfm-peft table --configs configs/experiments --write
+```
+
+The first command installs torch, transformers and peft alongside the package. The second
+runs all eleven arms and regenerates the table above from the artifacts they write. Datasets
+and checkpoint weights download on first use into `~/.cache/tsfm_peft` and
+`~/.cache/huggingface`; nothing is committed to this repository.
+
+Expect this to want a GPU. The zero-shot and seasonal-naive arms run on CPU in minutes; the
+seven fine-tuning arms are 1000 steps each against a 231M-parameter checkpoint.
+
+To run a single arm, or to see what a config resolves to without downloading anything:
+
+```bash
+uv run tsfm-peft run configs/experiments/etth1-timesfm-lora.yaml
+uv run tsfm-peft run --check configs/experiments/*.yaml
+uv run tsfm-peft list
+```
+
+There is a Docker image if you would rather not install anything:
+
+```bash
+docker build -t tsfm-peft .
+docker run --rm -v tsfm-peft-cache:/cache tsfm-peft run configs/experiments/etth1-timesfm-zeroshot.yaml
+```
+
+## Method
+
+**Rolling-origin backtesting, never a single split.** Each series contributes several
+evaluation windows rather than one. Test origins are the last `n_test_windows` positions
+spaced one horizon apart, so the windows are non-overlapping and each scores a distinct
+span. A window's context is `values[origin - context_length : origin]` and its target is
+`values[origin : origin + horizon]`; nothing at or after an origin reaches the model for
+that origin.
+
+**Three regions per series, in order: fit, validation, test.** Validation windows sit
+immediately before the test region and are used only for checkpoint selection and early
+stopping. The fit region is everything before the first validation origin. Because test
+origins are computed from the end of each series, reserving validation windows shortens
+training without moving a single test target — which is what lets the zero-shot arm (no
+validation windows) and the fine-tuned arms share a table.
+
+**Leakage boundaries are marked in the source.** Scalers are fitted on the fit region only
+(`evaluate.py`), MASE denominators and training windows both come from the fit region only
+(`data/windows.py`), and the trainer sees only the fit region and the validation windows
+(`experiment.py`). Each of those places carries a `LEAKAGE BOUNDARY` comment saying what
+would go wrong with the obvious shortcut. All
+forecasts are returned to raw units before any metric sees them: MASE and weighted quantile
+loss are both scale-dependent, so scoring in normalised space would silently measure
+something else.
+
+**Metrics follow the sources they would be compared against.** MASE per Hyndman & Koehler
+as operationalised by M4, with the in-sample seasonal-naive MAE of the fit region as the
+denominator. sMAPE in the M4 form, bounded in [0, 200]. Weighted quantile loss in the
+GluonTS/Chronos form — pinball loss over the nine deciles, normalised by the total absolute
+magnitude of the targets. Pooled WQL is reported alongside a macro average because for a
+dataset whose series are channels of very different scale (ETTh1) the pooled number is
+effectively a single-channel metric.
+
+**Cost is reported next to accuracy, always.** Trained parameter count and share, peak GPU
+memory, and wall-clock training time sit in the same table as MASE, because an accuracy
+number on its own does not tell you whether PEFT was worth it. The trained-parameter column
+counts what a run actually updated, not what `requires_grad` says: an untrained base model
+reports all 231M of its weights as trainable, and crediting the zero-shot arm with that
+would invert the whole comparison.
+
+**Fine-tuning.** LoRA and DoRA are attached via `peft` to the attention and MLP projections
+(`q_proj`, `k_proj`, `v_proj`, `o_proj`, `fc1`, `fc2`) of all 20 decoder layers. The input
+embedding and the output quantile heads stay frozen, so the pretrained horizon-to-quantile
+mapping is preserved and the trainable count stays honest. Checkpoints are selected on
+validation MASE with early stopping; only the adapter is saved.
+
+**Determinism.** Every run seeds Python, NumPy and torch, selects deterministic kernels, and
+records the seed, the package versions, the git commit and the hardware into its artifact.
+The same config on the same machine gives the same numbers. Wall-clock and memory figures
+are only comparable within one machine and one dtype.
+
+**Artifacts.** Every run writes one JSON file holding the full config, the seed record, the
+dataset and protocol provenance, the metrics with a per-series breakdown, the training
+curves, the resource log and the environment. The table is a pure function of those files.
+
+## Limitations
+
+Read this section before believing the table.
+
+- **Two datasets, one model family.** ETTh1 and NN5 Daily do not stand in for time series
+  generally. Nothing here has been tested on high-frequency, intermittent, hierarchical or
+  very long series, and no model outside TimesFM 2.5 has been run.
+- **ETTh1's seven channels are not seven independent series.** They are correlated
+  measurements from one transformer, treated as univariate series because that is what the
+  model interface takes. Per-series metrics are therefore less independent than the series
+  count suggests.
+- **The evaluation windows are few.** Eight non-overlapping test windows per ETTh1 channel
+  (56 forecast rows) and three per NN5 series (333 rows). Differences smaller than the
+  spread across windows are not meaningful, and no confidence intervals are computed.
+- **One seed per arm.** Results do not separate the effect of the method from run-to-run
+  variance. A small gap between two arms may be seed noise.
+- **The hyperparameters are documented starting points, not tuned values.** Learning rate,
+  step budget, warmup and batch size were not swept. If a LoRA arm fails to beat zero-shot,
+  that is evidence about these hyperparameters at least as much as about LoRA.
+- **This is not the LTSF leaderboard protocol.** Published ETTh1 tables generally slide a
+  stride-1 window over a 20% test split. These numbers are internally comparable across arms
+  and are *not* comparable to those tables.
+- **Only one adapter target set was tested.** Attention plus MLP projections, all layers.
+  Adapting fewer layers, or the embedding, or the output heads, is untested.
+- **The rank ablation holds alpha/rank at 2.0** so that capacity is the only thing varying.
+  The more common convention of fixing alpha instead would change capacity and update scale
+  together and would produce a different curve.
+- **Horizons are single-decode only.** TimesFM 2.5 emits 128 steps per forward pass, and the
+  horizons here (96 and 56) fit inside that. Autoregressive rollout to longer horizons is
+  not implemented, so nothing beyond 128 steps has been measured.
+- **NN5's missing values were imputed upstream** by the Monash authors, and those imputed
+  points are still scored here.
+- **A workaround sits in the training loss.** Upstream's `TimesFm2_5ModelForPrediction`
+  computes its `future_values` loss against misaligned quantile heads (see below), so this
+  repo computes its own. If upstream fixes that differently, fine-tuned numbers may move.
+- **Out of scope entirely:** multi-GPU and distributed training, quantized training,
+  Moirai/Chronos, and any hyperparameter search.
+
+### An upstream bug worth knowing about
+
+`TimesFm2_5ModelForPrediction.forward` returns `mse + quantile_loss` when handed
+`future_values`, and that quantile term is misaligned. It drops the `decode_index` column
+from the `[point, q_0.1 … q_0.9]` output and then zips what remains against
+`config.quantiles` positionally, so level 0.1 is scored against the point head, 0.2 against
+the 0.1 head, and so on — while the median head, the one this adapter reports as its point
+forecast, is excluded from the pinball term entirely. The failure is silent: the loss still
+falls and the model still trains, it just learns the wrong quantiles.
+
+`aligned_forecast_loss` in `src/tsfm_peft/models/timesfm.py` replaces it. This has not been
+reported upstream yet.
+
+## Adding a dataset
+
+1. Write a loader returning a `TimeSeriesDataset` (see `src/tsfm_peft/data/loaders.py`).
+   Downloads go through `data/download.py`, which pins the file by SHA-256 so an upstream
+   edit fails loudly instead of silently changing results.
+2. Add a `DatasetSpec` to `DATASETS` in `src/tsfm_peft/data/registry.py`, giving the
+   frequency, the MASE seasonal lag, the license and the source URL.
+3. Add a data config under `configs/data/` with the horizon, context length and window
+   counts. Every arm of that dataset references this one file, which is what stops the
+   horizon from drifting between the zero-shot row and the fine-tuned rows.
+4. Add one experiment config per arm under `configs/experiments/`, each pointing at the
+   data config from step 3.
+
+The datasets table below and the results table both read from the registry, so a new entry
+appears in the documentation without anything being written by hand.
+
+## Adding a model
+
+1. Subclass `ForecastModel` in `src/tsfm_peft/models/` and implement `_predict_batch`:
+   raw contexts in, point and quantile forecasts in the same raw units out. If the model
+   needs an external scaler rather than normalising internally, set
+   `requires_external_scaling`.
+2. To make it fine-tunable, subclass `FineTunableModel` instead and add `module` and
+   `training_loss`. The trainer owns batching, the optimiser, the schedule and checkpoint
+   selection; the adapter owns only the loss, because the loss depends on what space the
+   model normalises in and which output head means what.
+3. Add a `ModelSpec` to `MODELS` in `src/tsfm_peft/models/registry.py` with a pydantic
+   options model. Config `options` blocks are validated against it, so a misspelled key
+   fails when the config loads rather than after an hour on a GPU.
+4. Add experiment configs. No evaluation code changes.
 
 ## Datasets
 
 Downloaded on first use into `~/.cache/tsfm_peft` (override with `TSFM_PEFT_CACHE`) and
-pinned by SHA-256, so an upstream edit fails loudly instead of silently changing results.
-No data is committed to this repository.
+pinned by SHA-256. No data is committed to this repository.
 
-| Dataset | Content | License | Source |
-|---|---|---|---|
-| `etth1` | Electricity Transformer Temperature, hourly, 7 channels x 17420 steps, each channel treated as an independent univariate series | CC BY-ND 4.0 | [zhouhaoyi/ETDataset](https://github.com/zhouhaoyi/ETDataset) |
-| `nn5_daily` | Daily ATM cash withdrawals, 111 series x 791 steps, Monash "without missing values" variant | CC BY 4.0 | [Zenodo 4656117](https://zenodo.org/records/4656117) |
+| Dataset | Content | Horizon | License | Source |
+|---|---|---|---|---|
+| `etth1` | Electricity Transformer Temperature, hourly, 7 channels x 17420 steps, each channel treated as an independent univariate series | 96 | CC BY-ND 4.0 | [zhouhaoyi/ETDataset](https://github.com/zhouhaoyi/ETDataset) |
+| `nn5_daily` | Daily ATM cash withdrawals, 111 series x 791 steps, Monash "without missing values" variant | 56 | CC BY 4.0 | [Zenodo 4656117](https://zenodo.org/records/4656117) |
 
 ETTh1 is CC BY-ND: it is downloaded at runtime and never redistributed or shipped in
 modified form. NN5's missing values were imputed upstream by the Monash authors (median of
 the same weekday); those imputed points are still scored here.
+
+The model checkpoint is `google/timesfm-2.5-200m-transformers` (Apache-2.0). A published
+number should name the revision it was produced against; the configs carry a `revision`
+field for that purpose.
 
 ## Development
 
 ```bash
 uv sync --extra dev                  # core + test tooling, no torch
 uv sync --extra dev --extra models   # adds torch/transformers/peft
-uv run pytest
-uvx ruff check . && uvx ruff format --check .
+uv run pytest                        # the torch-free suite runs in seconds
+uv run ruff check . && uv run ruff format --check .
+uv run tsfm-peft table --configs configs/experiments --check
 ```
+
+Tests are marked `slow`, `gpu` and `network`; CI deselects all three. The CPU job runs the
+full end-to-end pipeline against a generated dataset and a randomly initialised tiny
+checkpoint, so the path a real run takes is exercised on every push without downloading
+anything. Those fixture runs are excluded from the results table by construction.
 
 ## License
 
-Apache-2.0, see [LICENSE](LICENSE). Dataset licenses are documented separately in the datasets
-section of the final README.
+Apache-2.0, see [LICENSE](LICENSE). Dataset licenses are listed in the datasets section
+above; the data itself is never redistributed here.
