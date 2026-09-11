@@ -37,6 +37,11 @@ ARMS=(
   etth1-timesfm-lora-r32
   etth1-timesfm-lora-r64
   etth1-timesfm-lora-r128
+  etth1-timesfm-dora-r4
+  etth1-timesfm-dora-r8
+  etth1-timesfm-dora-r32
+  etth1-timesfm-dora-r64
+  etth1-timesfm-dora-r128
 )
 
 # Synthetic arms are CI smoke fixtures against a randomly initialised checkpoint and are

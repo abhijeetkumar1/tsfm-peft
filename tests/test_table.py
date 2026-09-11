@@ -597,7 +597,12 @@ class TestShippedConfigs:
             "TimesFM 2.5 + LoRA r32",
             "TimesFM 2.5 + LoRA r64",
             "TimesFM 2.5 + LoRA r128",
+            "TimesFM 2.5 + DoRA r4",
+            "TimesFM 2.5 + DoRA r8",
             "TimesFM 2.5 + DoRA r16",
+            "TimesFM 2.5 + DoRA r32",
+            "TimesFM 2.5 + DoRA r64",
+            "TimesFM 2.5 + DoRA r128",
         ]
         assert by_dataset["nn5_daily"] == [
             "Seasonal naive",

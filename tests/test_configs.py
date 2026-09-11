@@ -26,6 +26,10 @@ DESCRIPTIVE = {"name", "notes"}
 
 ABLATION_RANKS = (4, 8, 32, 64, 128)
 
+#: Every LoRA rank has a DoRA row at the same rank, named with the same suffix. The empty
+#: suffix is rank 16, whose rows are the headline arms and carry no rank in their names.
+PAIRED_SUFFIXES = ("", "-r4", "-r8", "-r32", "-r64", "-r128")
+
 
 def experiment(stem: str):
     return load_experiment(REPO / "configs" / "experiments" / f"{stem}.yaml")
@@ -100,6 +104,31 @@ class TestArmsAreComparable:
             compared(f"{dataset}-timesfm-lora"), compared(f"{dataset}-timesfm-dora")
         )
         assert difference == {"model.options.peft.method"}
+
+    @pytest.mark.parametrize("suffix", PAIRED_SUFFIXES)
+    def test_every_dora_row_has_a_lora_row_at_the_same_rank(self, suffix):
+        # What a DoRA row measures is the method, so it is only interpretable against a LoRA
+        # row that differs in nothing else. A DoRA rank with no LoRA twin measures nothing.
+        difference = differing_paths(
+            compared(f"etth1-timesfm-lora{suffix}"), compared(f"etth1-timesfm-dora{suffix}")
+        )
+        assert difference == {"model.options.peft.method"}
+
+    def test_no_unpaired_dora_rows(self):
+        dora = {p.stem for p in EXPERIMENTS if "-dora" in p.stem and p.stem.startswith("etth1")}
+        assert dora == {f"etth1-timesfm-dora{suffix}" for suffix in PAIRED_SUFFIXES}
+
+    def test_the_two_sweeps_cover_the_same_ranks(self):
+        # The comparison is only a comparison if it is available at every point. A rank with
+        # a LoRA row and no DoRA row turns the method question into a rank question.
+        def ranks(method: str) -> set[int]:
+            return {
+                experiment(p.stem).model.options["peft"]["rank"]
+                for p in EXPERIMENTS
+                if p.stem.startswith("etth1-timesfm-") and method in p.stem
+            }
+
+        assert ranks("lora") == ranks("dora") == {4, 8, 16, 32, 64, 128}
 
     @pytest.mark.parametrize("dataset", ["etth1", "nn5_daily"])
     def test_the_finetuned_arms_match_the_zero_shot_arm_where_it_overlaps(self, dataset):
