@@ -20,12 +20,12 @@ Test windows: horizon 96, context 512, 8 rolling origins per series, 7 series, 5
 | TimesFM 2.5 zero-shot | 0.905 | 29.357 | 24.417 | 0.193 | 0.180 | 0 | 1.06 GB | n/a |
 | TimesFM 2.5 + LoRA r16 | 0.910 | 30.004 | 24.242 | 0.192 | 0.182 | 4.92M (2.08%) | 1.45 GB | 8m 07s |
 | TimesFM 2.5 + LoRA r32 | 0.886 | 29.189 | 24.019 | 0.189 | 0.176 | 9.83M (4.08%) | 1.51 GB | 4m 36s |
-| TimesFM 2.5 + LoRA r64 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + LoRA r128 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + LoRA r64 | 0.909 | 30.181 | 24.671 | 0.195 | 0.181 | 19.66M (7.83%) | 1.64 GB | 4m 33s |
+| TimesFM 2.5 + LoRA r128 | 0.956 | 31.706 | 26.046 | 0.205 | 0.190 | 39.32M (14.53%) | 1.88 GB | 4m 32s |
 | TimesFM 2.5 + DoRA r16 | 0.917 | 30.262 | 24.365 | 0.193 | 0.184 | 5.07M (2.14%) | 1.78 GB | 11m 33s |
-| TimesFM 2.5 + DoRA r32 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r64 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
-| TimesFM 2.5 + DoRA r128 *(not run)* | -- | -- | -- | -- | -- | -- | -- | -- |
+| TimesFM 2.5 + DoRA r32 | 0.884 | 29.126 | 24.009 | 0.189 | 0.176 | 9.98M (4.14%) | 1.84 GB | 6m 14s |
+| TimesFM 2.5 + DoRA r64 | 0.909 | 30.180 | 24.657 | 0.195 | 0.181 | 19.81M (7.89%) | 1.96 GB | 6m 21s |
+| TimesFM 2.5 + DoRA r128 | 0.957 | 31.765 | 26.051 | 0.205 | 0.190 | 39.48M (14.58%) | 2.21 GB | 6m 18s |
 
 ### nn5_daily
 
@@ -49,10 +49,9 @@ Unweighted mean over 2 datasets (etth1, nn5_daily), for arms scored on all of th
 | TimesFM 2.5 + LoRA r16 | 0.865 | 25.163 | 20.423 | 0.164 |
 | TimesFM 2.5 + DoRA r16 | 0.869 | 25.293 | 20.511 | 0.165 |
 
-- `--` marks an arm whose config exists but has not been run yet.
-- Produced at commit `bd322e40e1cb`.
+- Rows come from more than one commit; re-run the whole set from one tree before publishing.
 - At least one row was produced from a dirty working tree and cannot be tied to a commit.
-- Hardware: Tesla T4, Tesla T4.
+- Rows were produced on more than one machine, so the peak-memory and train-time columns are not comparable between them.
 - Ran on a kernel with no deterministic implementation, so these rows reproduce only to within floating-point accumulation order, not bit-exactly: `etth1-timesfm-dora`, `etth1-timesfm-lora`, `etth1-timesfm-lora-r32`, `nn5_daily-timesfm-dora`, `nn5_daily-timesfm-lora`. The artifact names the kernel.
 
 <!-- END RESULTS TABLE -->
