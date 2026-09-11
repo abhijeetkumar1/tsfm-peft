@@ -147,13 +147,17 @@ class TestArm:
             Arm("timesfm_2p5", "lora", 32),
             Arm("seasonal_naive"),
             Arm("timesfm_2p5", "lora", 4),
+            Arm("timesfm_2p5", "lora", 128),
             Arm("timesfm_2p5"),
         ]
+        # r128 after r32, not between r128 and r4: the rank sorts as a number, and a table
+        # that ordered it as a string would put the largest adapter in the middle.
         assert [a.label for a in sorted(arms, key=lambda a: a.sort_key)] == [
             "Seasonal naive",
             "TimesFM 2.5 zero-shot",
             "TimesFM 2.5 + LoRA r4",
             "TimesFM 2.5 + LoRA r32",
+            "TimesFM 2.5 + LoRA r128",
             "TimesFM 2.5 + DoRA r16",
         ]
 
@@ -557,6 +561,8 @@ class TestShippedConfigs:
             "TimesFM 2.5 + LoRA r8",
             "TimesFM 2.5 + LoRA r16",
             "TimesFM 2.5 + LoRA r32",
+            "TimesFM 2.5 + LoRA r64",
+            "TimesFM 2.5 + LoRA r128",
             "TimesFM 2.5 + DoRA r16",
         ]
         assert by_dataset["nn5_daily"] == [

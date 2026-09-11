@@ -1,6 +1,6 @@
-# Rank ablation on ETTh1: rank 8, alpha 16.
+# Rank ablation on ETTh1: rank 128, alpha 256.
 #
-# One of six rows. The rank-16 row is etth1-timesfm-lora.yaml itself, which is why there is
+# One of four rows. The rank-16 row is etth1-timesfm-lora.yaml itself, which is why there is
 # no -r16 file: the headline arm and the ablation's midpoint are the same run, and running it
 # twice would put two artifacts behind one number.
 #
@@ -12,7 +12,7 @@
 #
 # Everything else is identical to etth1-timesfm-lora.yaml, including the seed and the step
 # budget. tests/test_configs.py asserts that.
-name: etth1-timesfm-lora-r8
+name: etth1-timesfm-lora-r128
 data: ../data/etth1.yaml
 model:
   name: timesfm_2p5
@@ -25,8 +25,8 @@ model:
     clamp_negative: per_series
     peft:
       method: lora
-      rank: 8
-      alpha: 16
+      rank: 128
+      alpha: 256
       dropout: 0.0
       # Attention and MLP projections of all 20 decoder layers. The input embedding and the
       # output projection heads stay frozen, so the pretrained horizon-to-quantile mapping
@@ -47,5 +47,6 @@ training:
   save_adapter: true
 seed: 0
 notes: >-
-  Rank ablation row, rank 8. Compare against the other -r rows and against
-  etth1-timesfm-lora.yaml, which is the rank-16 row of the same sweep.
+  Rank ablation row, rank 128, the top of the sweep. At 39.3M trainable parameters this
+  is 14.5% of the model and no longer parameter-efficient in any useful sense; it is here to
+  show where the rank curve stops paying, not as a recommended setting.
